@@ -4,10 +4,12 @@ import com.todoist.user.User;
 import com.todoist.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -54,6 +56,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String token = jwtService.issueToken(user.getId(), user.getEmail());
         ResponseCookie cookie = cookieFactory.create(token, jwtService.getExpirationSeconds());
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        // Drop the OAuth login session: auth is now carried statelessly by the JWT
+        // cookie. Otherwise the session-stored OAuth2 principal would shadow our
+        // JwtCookieAuthFilter on later requests (and @AuthenticationPrincipal UUID
+        // would be null). The handshake's session is no longer needed.
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
 
         response.sendRedirect(frontendUrl);
     }

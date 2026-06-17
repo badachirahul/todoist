@@ -36,13 +36,25 @@ public class UserService {
      */
     @Transactional
     public User findOrCreateFromGoogle(String googleId, String email, String name, String avatarUrl) {
-        return userRepository.findByGoogleId(googleId)
-                .map(existing -> refreshProfile(existing, name, avatarUrl))
-                .orElseGet(() -> {
-                    User user = newUserWithInbox(email, name, avatarUrl);
-                    user.setGoogleId(googleId);
-                    return user;
-                });
+        // 1) Returning Google user.
+        Optional<User> byGoogle = userRepository.findByGoogleId(googleId);
+        if (byGoogle.isPresent()) {
+            return refreshProfile(byGoogle.get(), name, avatarUrl);
+        }
+
+        // 2) Existing email/password account with the same (Google-verified) email:
+        //    link the Google identity to it instead of creating a duplicate.
+        Optional<User> byEmail = userRepository.findByEmail(email);
+        if (byEmail.isPresent()) {
+            User user = byEmail.get();
+            user.setGoogleId(googleId);
+            return refreshProfile(user, name, avatarUrl);
+        }
+
+        // 3) Brand-new user.
+        User user = newUserWithInbox(email, name, avatarUrl);
+        user.setGoogleId(googleId);
+        return user;
     }
 
     public boolean emailExists(String email) {
