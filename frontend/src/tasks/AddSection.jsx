@@ -16,12 +16,14 @@ export default function AddSection({ projectId }) {
   }
 
   if (!open) {
+    // Centered "Add section" with divider lines; reveals red on hover.
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="mt-6 w-full border-t border-transparent py-1.5 text-left text-sm text-gray-400 hover:text-[#dc4c3e]"
-      >
-        + Add section
+      <button onClick={() => setOpen(true)} className="group mt-6 flex w-full items-center gap-2 py-2">
+        <span className="h-px flex-1 bg-transparent transition group-hover:bg-[#dc4c3e]" />
+        <span className="text-sm font-semibold text-transparent transition group-hover:text-[#dc4c3e]">
+          Add section
+        </span>
+        <span className="h-px flex-1 bg-transparent transition group-hover:bg-[#dc4c3e]" />
       </button>
     );
   }

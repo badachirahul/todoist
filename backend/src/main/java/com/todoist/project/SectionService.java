@@ -50,7 +50,7 @@ public class SectionService {
 
     @Transactional
     public void delete(UUID sectionId, UUID userId) {
-        // Tasks keep existing (section_id ON DELETE SET NULL) — they just become section-less.
+        // Deleting a section deletes its tasks too (section_id ON DELETE CASCADE, V3).
         sectionRepository.delete(loadOwned(sectionId, userId));
     }
 
