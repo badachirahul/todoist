@@ -264,7 +264,9 @@ todoist/
 - Entities (package-by-feature): `user.User`, `project.{Project,ProjectMember,Section,ProjectRole}`, `task.{Task,Comment}`, `label.Label`. `@ManyToOne(LAZY)` associations; Task↔Label is `@ManyToMany` via `task_labels`. Timestamps = `OffsetDateTime` (↔ timestamptz), strings = `varchar`. Hibernate `validate` passes against the Flyway schema.
 - Repos: Spring Data `JpaRepository<Entity, UUID>` per entity (e.g. `findByOwnerIdAndInboxTrue`, `findByProjectIdAndParentTaskIsNullOrderByPosition`).
 
-**Phase 2 — Auth (first vertical slice).** Google OAuth2 → find/create User → issue JWT → httpOnly `SameSite=Lax` cookie; security filter validates. `/api/me`. Auto-create Inbox on first login. FE: Login/Sign-up pages (Google-only, two-column), post-login redirect, route auth guard. ✅ Can log in → logged-in shell.
+**Phase 2 — Auth (first vertical slice). ✅ BUILT (email/pwd verified; Google pending creds).** Google OAuth2 AND email/password → issue JWT → httpOnly `SameSite=Lax` cookie; `JwtCookieAuthFilter` validates. `/api/me`, `/api/auth/{register,login,logout}`. Auto-create Inbox on first signup. FE: two-column Login/Sign-up (Google + email/password form, FB/Apple omitted), router, `RequireAuth` guard, `useMe`. 
+- Email/password flow fully verified via curl. **Google flow blocked on a live OAuth client** (env `GOOGLE_CLIENT_ID` pointed at a deleted client → `deleted_client`; user to recreate in Google Console, redirect URI `http://localhost:8080/login/oauth2/code/google`).
+- Login page styling is first-pass; pixel-tune against `login.png`/`sign-up.png` in Phase 3. Temporary `HomePage` placeholder until the real shell.
 
 **Phase 3 — App shell.** Sidebar (header, Add task, Search, nav items, My Projects) with hover states/tooltips; non-MVP items render inert. Top bar, content region, routing skeleton. ✅ Pixel-tune vs `project-view.png`.
 
