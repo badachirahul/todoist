@@ -140,8 +140,8 @@ export default function TaskDetailModal({ taskId, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[8vh]" onMouseDown={onClose}>
-      <div className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[7vh]" onMouseDown={onClose}>
+      <div className="flex h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 text-sm text-gray-500">
           <span className="flex items-center gap-1.5">
@@ -169,7 +169,7 @@ export default function TaskDetailModal({ taskId, onClose }) {
                     onChange={(e) => setTitle(e.target.value)}
                     onBlur={saveTitle}
                     onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                    className="w-full text-lg font-semibold text-gray-900 outline-none"
+                    className="w-full text-xl font-bold text-[#202020] outline-none"
                   />
                   <textarea
                     value={desc}
@@ -182,7 +182,10 @@ export default function TaskDetailModal({ taskId, onClose }) {
                 </div>
               </div>
 
-              <Subtasks parentId={task.id} />
+              {/* Indented under the title (past the checkbox) like Todoist */}
+              <div className="pl-[30px]">
+                <Subtasks parentId={task.id} />
+              </div>
               <Comments taskId={task.id} />
             </div>
 

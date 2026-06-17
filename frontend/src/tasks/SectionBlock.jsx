@@ -61,7 +61,7 @@ export default function SectionBlock({ section, tasks, renderRow, projectId }) {
       </div>
 
       {!collapsed && (
-        <div className="mt-1">
+        <div className="mt-1 pl-6">
           {tasks.map(renderRow)}
           <TaskComposer projectId={projectId} sectionId={section.id} />
         </div>
