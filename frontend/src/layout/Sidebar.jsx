@@ -13,9 +13,11 @@ import {
   ChevronDown,
   CircleHelp,
 } from "lucide-react";
+import { useState } from "react";
 import { Hash } from "lucide-react";
 import { useMe } from "../auth/useMe";
 import { useProjects } from "../api/projects";
+import AddTaskModal from "../tasks/AddTaskModal";
 
 const RED = "#dc4c3e";
 
@@ -54,6 +56,7 @@ export default function Sidebar() {
   const { data: user } = useMe();
   const { data: projects = [] } = useProjects();
   const initial = (user?.name?.[0] || "?").toUpperCase();
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <aside className="flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
@@ -80,6 +83,7 @@ export default function Sidebar() {
 
       {/* Add task */}
       <button
+        onClick={() => setAddOpen(true)}
         className="mt-4 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-gray-200/40"
         style={{ color: RED }}
       >
@@ -133,6 +137,8 @@ export default function Sidebar() {
           Help &amp; resources
         </button>
       </div>
+
+      <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
     </aside>
   );
 }
