@@ -4,6 +4,7 @@ import SignupPage from "./pages/SignupPage";
 import RequireAuth from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
 import ViewPlaceholder from "./views/ViewPlaceholder";
+import InboxView from "./views/InboxView";
 
 function App() {
   return (
@@ -22,7 +23,7 @@ function App() {
           }
         >
           <Route index element={<Navigate to="/inbox" replace />} />
-          <Route path="inbox" element={<ViewPlaceholder title="Inbox" />} />
+          <Route path="inbox" element={<InboxView />} />
           <Route path="today" element={<ViewPlaceholder title="Today" />} />
           <Route path="upcoming" element={<ViewPlaceholder title="Upcoming" />} />
           <Route path="filters" element={<ViewPlaceholder title="Filters & Labels" />} />

@@ -7,8 +7,10 @@ import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
-    // Top-level tasks of a project (sub-tasks excluded), ordered for display.
-    List<Task> findByProjectIdAndParentTaskIsNullOrderByPosition(UUID projectId);
+    // Top-level, not-completed tasks of a project, ordered for display.
+    List<Task> findByProjectIdAndParentTaskIsNullAndCompletedFalseOrderByPosition(UUID projectId);
 
     List<Task> findByParentTaskIdOrderByPosition(UUID parentTaskId);
+
+    int countByProjectIdAndParentTaskIsNull(UUID projectId);
 }

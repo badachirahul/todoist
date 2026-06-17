@@ -13,7 +13,9 @@ import {
   ChevronDown,
   CircleHelp,
 } from "lucide-react";
+import { Hash } from "lucide-react";
 import { useMe } from "../auth/useMe";
+import { useProjects } from "../api/projects";
 
 const RED = "#dc4c3e";
 
@@ -50,6 +52,7 @@ function NavRow({ to, label, icon: Icon }) {
 
 export default function Sidebar() {
   const { data: user } = useMe();
+  const { data: projects = [] } = useProjects();
   const initial = (user?.name?.[0] || "?").toUpperCase();
 
   return (
@@ -102,7 +105,26 @@ export default function Sidebar() {
       <div className="mt-6 flex items-center px-2">
         <span className="text-xs font-semibold text-gray-500">My Projects</span>
       </div>
-      <div className="mt-1 px-2 text-xs text-gray-400">No projects yet</div>
+      <div className="mt-1 flex flex-col gap-0.5">
+        {projects.filter((p) => !p.inbox).map((p) => (
+          <NavLink
+            key={p.id}
+            to={`/project/${p.id}`}
+            className={({ isActive }) =>
+              [
+                "flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition",
+                isActive ? "bg-[#ffefe9] font-medium text-[#dc4c3e]" : "text-gray-700 hover:bg-gray-200/60",
+              ].join(" ")
+            }
+          >
+            <Hash size={18} className="text-gray-500" />
+            <span className="flex-1 truncate">{p.name}</span>
+          </NavLink>
+        ))}
+        {projects.filter((p) => !p.inbox).length === 0 && (
+          <div className="px-2 text-xs text-gray-400">No projects yet</div>
+        )}
+      </div>
 
       {/* Bottom */}
       <div className="mt-auto">
