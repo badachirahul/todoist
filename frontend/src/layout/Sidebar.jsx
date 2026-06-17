@@ -14,10 +14,11 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { useState } from "react";
-import { Hash } from "lucide-react";
 import { useMe } from "../auth/useMe";
 import { useProjects } from "../api/projects";
 import AddTaskModal from "../tasks/AddTaskModal";
+import ProjectRow from "./ProjectRow";
+import ProjectModal from "../projects/ProjectModal";
 
 const RED = "#dc4c3e";
 
@@ -57,6 +58,8 @@ export default function Sidebar() {
   const { data: projects = [] } = useProjects();
   const initial = (user?.name?.[0] || "?").toUpperCase();
   const [addOpen, setAddOpen] = useState(false);
+  // null = closed; "create" = new project; project object = rename
+  const [projectModal, setProjectModal] = useState(null);
 
   return (
     <aside className="flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
@@ -106,24 +109,19 @@ export default function Sidebar() {
       </nav>
 
       {/* My Projects */}
-      <div className="mt-6 flex items-center px-2">
-        <span className="text-xs font-semibold text-gray-500">My Projects</span>
+      <div className="group mt-6 flex items-center px-2">
+        <span className="flex-1 text-xs font-semibold text-gray-500">My Projects</span>
+        <button
+          onClick={() => setProjectModal("create")}
+          className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+          aria-label="Add project"
+        >
+          <Plus size={16} />
+        </button>
       </div>
       <div className="mt-1 flex flex-col gap-0.5">
         {projects.filter((p) => !p.inbox).map((p) => (
-          <NavLink
-            key={p.id}
-            to={`/project/${p.id}`}
-            className={({ isActive }) =>
-              [
-                "flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition",
-                isActive ? "bg-[#ffefe9] font-medium text-[#dc4c3e]" : "text-gray-700 hover:bg-gray-200/60",
-              ].join(" ")
-            }
-          >
-            <Hash size={18} className="text-gray-500" />
-            <span className="flex-1 truncate">{p.name}</span>
-          </NavLink>
+          <ProjectRow key={p.id} project={p} onRename={(proj) => setProjectModal(proj)} />
         ))}
         {projects.filter((p) => !p.inbox).length === 0 && (
           <div className="px-2 text-xs text-gray-400">No projects yet</div>
@@ -139,6 +137,12 @@ export default function Sidebar() {
       </div>
 
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
+      {projectModal && (
+        <ProjectModal
+          project={projectModal === "create" ? null : projectModal}
+          onClose={() => setProjectModal(null)}
+        />
+      )}
     </aside>
   );
 }
