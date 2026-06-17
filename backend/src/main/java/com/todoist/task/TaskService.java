@@ -3,6 +3,8 @@ package com.todoist.task;
 import com.todoist.project.Project;
 import com.todoist.project.ProjectMemberRepository;
 import com.todoist.project.ProjectRepository;
+import com.todoist.project.Section;
+import com.todoist.project.SectionRepository;
 import com.todoist.task.dto.CreateTaskRequest;
 import com.todoist.task.dto.TaskDto;
 import com.todoist.task.dto.UpdateTaskRequest;
@@ -24,15 +26,18 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final SectionRepository sectionRepository;
 
     public TaskService(TaskRepository taskRepository,
                        ProjectRepository projectRepository,
                        UserRepository userRepository,
-                       ProjectMemberRepository projectMemberRepository) {
+                       ProjectMemberRepository projectMemberRepository,
+                       SectionRepository sectionRepository) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.sectionRepository = sectionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -57,6 +62,15 @@ public class TaskService {
         task.setPriority(req.priority() != null ? req.priority() : 4);
         task.setDueDate(req.dueDate());
         task.setPosition(taskRepository.countByProjectIdAndParentTaskIsNull(projectId));
+
+        if (req.sectionId() != null) {
+            Section section = sectionRepository.findById(req.sectionId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Section not found"));
+            if (!section.getProject().getId().equals(projectId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Section is not in this project");
+            }
+            task.setSection(section);
+        }
 
         return TaskDto.from(taskRepository.save(task));
     }

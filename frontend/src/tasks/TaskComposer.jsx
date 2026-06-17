@@ -8,7 +8,7 @@ import { useCreateTask } from "../api/tasks";
  * shared TaskForm in a bordered card. Stays open after adding (onAdded = noop)
  * so you can keep jotting tasks.
  */
-export default function TaskComposer({ projectId }) {
+export default function TaskComposer({ projectId, sectionId }) {
   const [open, setOpen] = useState(false);
   const createTask = useCreateTask(projectId);
 
@@ -27,7 +27,7 @@ export default function TaskComposer({ projectId }) {
   return (
     <div className="mt-3 rounded-lg border border-gray-300 p-3 shadow-sm">
       <TaskForm
-        onSubmit={(values) => createTask.mutate(values)}
+        onSubmit={(values) => createTask.mutate({ ...values, sectionId })}
         onCancel={() => setOpen(false)}
         resetAfterSubmit
         pending={createTask.isPending}
