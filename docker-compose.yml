@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: todoist-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: todoist
+      POSTGRES_USER: todoist
+      POSTGRES_PASSWORD: todoist
+    ports:
+      - "5433:5432"
+    volumes:
+      - todoist-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todoist -d todoist"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  todoist-pgdata:
