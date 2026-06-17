@@ -1,23 +1,33 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useCreateTask } from "../api/tasks";
+import DatePicker from "./DatePicker";
+import PriorityDropdown from "./PriorityDropdown";
 
 /**
  * Inline "+ Add task" composer. Collapsed it's a muted button; expanded it's a
- * bordered card with a content input. Stays open after adding so you can keep
- * jotting tasks (like Todoist). Date/Priority pickers arrive next.
+ * bordered card with a name input plus Date and Priority pickers. Stays open
+ * after adding so you can keep jotting tasks (like Todoist).
  */
 export default function TaskComposer({ projectId }) {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
+  const [priority, setPriority] = useState(4);
+  const [dueDate, setDueDate] = useState(null);
   const createTask = useCreateTask(projectId);
+
+  function reset() {
+    setContent("");
+    setPriority(4);
+    setDueDate(null);
+  }
 
   function submit(e) {
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) return;
-    createTask.mutate({ content: trimmed });
-    setContent("");
+    createTask.mutate({ content: trimmed, priority, dueDate });
+    reset(); // keep composer open for the next task
   }
 
   if (!open) {
@@ -41,10 +51,16 @@ export default function TaskComposer({ projectId }) {
         placeholder="Task name"
         className="w-full text-sm outline-none placeholder:text-gray-400"
       />
+
+      <div className="mt-3 flex items-center gap-2">
+        <DatePicker value={dueDate} onChange={setDueDate} />
+        <PriorityDropdown value={priority} onChange={setPriority} />
+      </div>
+
       <div className="mt-3 flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
         <button
           type="button"
-          onClick={() => { setOpen(false); setContent(""); }}
+          onClick={() => { setOpen(false); reset(); }}
           className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
         >
           Cancel

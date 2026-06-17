@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Check, CalendarDays, Trash2 } from "lucide-react";
-
-// Priority → color (P1 red, P2 orange, P3 blue, P4 gray). Used for the checkbox.
-const PRIORITY_COLOR = {
-  1: "#dc4c3e",
-  2: "#eb8909",
-  3: "#246fe0",
-  4: "#9ca3af",
-};
+import { PRIORITY_COLOR } from "./PriorityDropdown";
 
 function formatDue(iso) {
   // "2026-07-01" -> "1 Jul"
