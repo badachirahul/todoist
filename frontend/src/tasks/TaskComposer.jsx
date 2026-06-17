@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import TaskForm from "./TaskForm";
+import { useCreateTask } from "../api/tasks";
 
 /**
  * Inline "+ Add task". Collapsed it's a muted button; expanded it shows the
@@ -9,6 +10,7 @@ import TaskForm from "./TaskForm";
  */
 export default function TaskComposer({ projectId }) {
   const [open, setOpen] = useState(false);
+  const createTask = useCreateTask(projectId);
 
   if (!open) {
     return (
@@ -24,7 +26,12 @@ export default function TaskComposer({ projectId }) {
 
   return (
     <div className="mt-3 rounded-lg border border-gray-300 p-3 shadow-sm">
-      <TaskForm projectId={projectId} onCancel={() => setOpen(false)} onAdded={() => {}} />
+      <TaskForm
+        onSubmit={(values) => createTask.mutate(values)}
+        onCancel={() => setOpen(false)}
+        resetAfterSubmit
+        pending={createTask.isPending}
+      />
     </div>
   );
 }

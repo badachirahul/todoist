@@ -1,31 +1,35 @@
 import { useState } from "react";
-import { useCreateTask } from "../api/tasks";
 import DatePicker from "./DatePicker";
 import PriorityDropdown from "./PriorityDropdown";
 
 /**
- * The add-task form internals (name + Date + Priority + buttons), shared by the
- * inline composer and the global modal popup. The outer container (bordered
- * card vs dialog) is supplied by the parent.
- *
- * - onCancel: Cancel button / dismiss
- * - onAdded:  called after a successful create (inline keeps open; modal closes)
+ * Presentational add/edit form (name + Date + Priority). Decoupled from any
+ * mutation: the parent passes onSubmit({content, priority, dueDate}). Shared by
+ * the inline composer, the global modal, and inline task editing.
  */
-export default function TaskForm({ projectId, onCancel, onAdded, autoFocus = true }) {
-  const [content, setContent] = useState("");
-  const [priority, setPriority] = useState(4);
-  const [dueDate, setDueDate] = useState(null);
-  const createTask = useCreateTask(projectId);
+export default function TaskForm({
+  initial,
+  submitLabel = "Add task",
+  onSubmit,
+  onCancel,
+  resetAfterSubmit = false,
+  autoFocus = true,
+  pending = false,
+}) {
+  const [content, setContent] = useState(initial?.content ?? "");
+  const [priority, setPriority] = useState(initial?.priority ?? 4);
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? null);
 
   function submit(e) {
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) return;
-    createTask.mutate({ content: trimmed, priority, dueDate });
-    setContent("");
-    setPriority(4);
-    setDueDate(null);
-    onAdded?.();
+    onSubmit({ content: trimmed, priority, dueDate });
+    if (resetAfterSubmit) {
+      setContent("");
+      setPriority(4);
+      setDueDate(null);
+    }
   }
 
   return (
@@ -53,10 +57,10 @@ export default function TaskForm({ projectId, onCancel, onAdded, autoFocus = tru
         </button>
         <button
           type="submit"
-          disabled={!content.trim() || createTask.isPending}
+          disabled={!content.trim() || pending}
           className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
-          Add task
+          {submitLabel}
         </button>
       </div>
     </form>

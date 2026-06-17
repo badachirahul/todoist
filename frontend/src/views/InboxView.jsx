@@ -22,8 +22,9 @@ export default function InboxView() {
           <TaskRow
             key={task.id}
             task={task}
-            onComplete={(id) => updateTask.mutate({ id, patch: { completed: true } })}
-            onDelete={(id) => deleteTask.mutate(id)}
+            onComplete={() => updateTask.mutate({ id: task.id, patch: { completed: true } })}
+            onUpdate={(patch) => updateTask.mutate({ id: task.id, patch })}
+            onDelete={() => deleteTask.mutate(task.id)}
           />
         ))}
       </div>

@@ -70,10 +70,10 @@ function MonthGrid({ selected, onPick }) {
   );
 }
 
-export default function DatePicker({ value, onChange }) {
+export default function DatePicker({ value, onChange, trigger: customTrigger, align = "left" }) {
   const selectedDate = value ? new Date(value + "T00:00:00") : null;
 
-  const trigger = (
+  const trigger = customTrigger ?? (
     <button
       type="button"
       className="flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -84,7 +84,7 @@ export default function DatePicker({ value, onChange }) {
   );
 
   return (
-    <Popover trigger={trigger} className="w-72">
+    <Popover trigger={trigger} align={align} className="w-72">
       {(close) => (
         <div className="py-1 text-sm">
           <div className="flex flex-col px-1">
