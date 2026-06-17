@@ -257,7 +257,11 @@ todoist/
 - **Boot 4 note:** starters renamed (`spring-boot-starter-webmvc`, split `-test` starters). No `tailwind.config.js` — Tailwind v4 uses `@import "tailwindcss"` in `index.css` + `@tailwindcss/vite` plugin.
 - **shadcn/ui NOT yet initialized** (deferred to when first real component is needed).
 
-**Phase 1 — Domain model & migrations.** JPA entities + Flyway scripts for the finalized model above. Spring Data repositories.
+**Phase 1 — Domain model & migrations. ✅ DONE.** JPA entities + Flyway scripts for the finalized model above. Spring Data repositories.
+- **PKs are UUID** (opaque/non-enumerable, fits sharing; via `gen_random_uuid()` + `@GeneratedValue(strategy=UUID)`). Switching ID type later avoided by deciding now.
+- Migration: `db/migration/V1__initial_schema.sql` (8 tables + FKs + indexes; `ON DELETE CASCADE` for project→children, parent_task→subtasks, task→comments/labels; `SET NULL` for section/assignee). `priority` CHECK 1–4.
+- Entities (package-by-feature): `user.User`, `project.{Project,ProjectMember,Section,ProjectRole}`, `task.{Task,Comment}`, `label.Label`. `@ManyToOne(LAZY)` associations; Task↔Label is `@ManyToMany` via `task_labels`. Timestamps = `OffsetDateTime` (↔ timestamptz), strings = `varchar`. Hibernate `validate` passes against the Flyway schema.
+- Repos: Spring Data `JpaRepository<Entity, UUID>` per entity (e.g. `findByOwnerIdAndInboxTrue`, `findByProjectIdAndParentTaskIsNullOrderByPosition`).
 
 **Phase 2 — Auth (first vertical slice).** Google OAuth2 → find/create User → issue JWT → httpOnly `SameSite=Lax` cookie; security filter validates. `/api/me`. Auto-create Inbox on first login. FE: Login/Sign-up pages (Google-only, two-column), post-login redirect, route auth guard. ✅ Can log in → logged-in shell.
 
