@@ -35,8 +35,13 @@ public class User {
     private String avatarUrl;
 
     // Links the Google identity. No password — Google-only auth.
-    @Column(name = "google_id", nullable = false, unique = true)
+    // Links the Google identity. Null for email/password users.
+    @Column(name = "google_id", unique = true)
     private String googleId;
+
+    // BCrypt hash. Null for Google-only users (they have no password).
+    @Column(name = "password_hash")
+    private String passwordHash;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

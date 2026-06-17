@@ -23,9 +23,10 @@ Building a clone of [Todoist](https://www.todoist.com/). Goal: an **exact** UI c
 - **PostgreSQL** (relational integrity for project members + task hierarchies; recursive queries for sub-tasks)
 
 ### Auth (LOCKED)
-- **JWT + Google OAuth2** (Spring Security)
-- **Google sign-in is the ONLY auth method** — no email/password, no Facebook/Apple. Auth pages render only "Continue with Google" (see UI Reference → Auth pages).
-- Flow: user signs in with Google → server finds/creates user → server issues **our own JWT**
+- **JWT** (Spring Security). Two ways in: **Google OAuth2** AND **email/password**.
+- **REVISED 2026-06-17:** Google is the only *OAuth provider* (Facebook/Apple buttons OMITTED), but **email/password is also a real, working method** (matches Todoist's actual login/signup forms). The earlier "Google-only, no email/password" lock is superseded.
+- Email/password: BCrypt-hashed `password_hash` on `users`; `google_id` is nullable (email/password users have none). Endpoints: `/api/auth/register`, `/api/auth/login`.
+- Flow (Google): sign in with Google → server finds/creates user → server issues **our own JWT**. Flow (email/pwd): register/login → verify → same JWT cookie.
 - **Token storage: httpOnly cookie** with `SameSite=Lax` and `Secure`.
   - Rationale: JS cannot read an httpOnly cookie, so an XSS bug can't steal the token (the localStorage weakness). Browser attaches it automatically → simpler React code. `SameSite=Lax` neutralizes CSRF in one line. This is the security best-practice that serious production apps use.
   - **Later upgrade (not day one):** short-lived access token in memory + long-lived refresh token in httpOnly cookie. Design auth cleanly now so this upgrade is painless.
@@ -198,7 +199,7 @@ Both pages share ONE layout; build as a single component with props for heading/
 | Cross-link | "Already signed up? Go to login" | "Don't have an account? Sign up" |
 | Right art | phone mockup + "Ramble" voice promo | calendar/phone/flower illustration + QR code |
 
-**SCOPE DECISION (locked): Google auth ONLY.** Real Todoist also has Facebook / Apple / email+password — we do NOT build those. Our auth pages render only **Continue with Google**. No email/password fields, no Forgot-password, no other social buttons. (May add decorative buttons later for pixel-fidelity, but not now.) See Auth section above.
+**SCOPE DECISION (REVISED 2026-06-17):** auth pages render **Continue with Google + email/password form** (both working). **Facebook & Apple buttons are OMITTED.** "Forgot your password?" link shown on login but reset flow is deferred (non-functional placeholder for now). See Auth section above.
 
 ### Screenshots still needed (capture just-in-time, per view)
 Today view · Upcoming (calendar-style) · Filters & Labels · Inbox · a task with real NLP input typed (to verify parsing UI)
