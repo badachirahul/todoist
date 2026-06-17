@@ -75,6 +75,36 @@ public class TaskService {
         return TaskDto.from(taskRepository.save(task));
     }
 
+    @Transactional(readOnly = true)
+    public TaskDto get(UUID taskId, UUID userId) {
+        return TaskDto.from(loadOwnedTask(taskId, userId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskDto> listSubtasks(UUID parentTaskId, UUID userId) {
+        loadOwnedTask(parentTaskId, userId); // authz on the parent
+        return taskRepository.findByParentTaskIdOrderByPosition(parentTaskId)
+                .stream().map(TaskDto::from).toList();
+    }
+
+    @Transactional
+    public TaskDto createSubtask(UUID parentTaskId, UUID userId, CreateTaskRequest req) {
+        Task parent = loadOwnedTask(parentTaskId, userId);
+
+        Task task = new Task();
+        task.setProject(parent.getProject());
+        task.setParentTask(parent);
+        task.setSection(parent.getSection());
+        task.setCreatedBy(userRepository.getReferenceById(userId));
+        task.setContent(req.content());
+        task.setDescription(req.description());
+        task.setPriority(req.priority() != null ? req.priority() : 4);
+        task.setDueDate(req.dueDate());
+        task.setPosition(taskRepository.findByParentTaskIdOrderByPosition(parentTaskId).size());
+
+        return TaskDto.from(taskRepository.save(task));
+    }
+
     @Transactional
     public TaskDto update(UUID taskId, UUID userId, UpdateTaskRequest req) {
         Task task = loadOwnedTask(taskId, userId);

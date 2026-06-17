@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useTasks, useUpdateTask, useDeleteTask } from "../api/tasks";
 import { useSections } from "../api/sections";
 import TaskRow from "../tasks/TaskRow";
 import TaskComposer from "../tasks/TaskComposer";
 import SectionBlock from "../tasks/SectionBlock";
 import AddSection from "../tasks/AddSection";
+import TaskDetailModal from "../tasks/TaskDetailModal";
 
 /**
  * Shared "title + tasks + sections + add-task" view. Used by Inbox and every
@@ -15,6 +17,7 @@ export default function TaskListView({ projectId, title, headerSlot }) {
   const { data: sections = [] } = useSections(projectId);
   const updateTask = useUpdateTask(projectId);
   const deleteTask = useDeleteTask(projectId);
+  const [detailTaskId, setDetailTaskId] = useState(null);
 
   const renderRow = (task) => (
     <TaskRow
@@ -23,6 +26,7 @@ export default function TaskListView({ projectId, title, headerSlot }) {
       onComplete={() => updateTask.mutate({ id: task.id, patch: { completed: true } })}
       onUpdate={(patch) => updateTask.mutate({ id: task.id, patch })}
       onDelete={() => deleteTask.mutate(task.id)}
+      onOpenDetail={() => setDetailTaskId(task.id)}
     />
   );
 
@@ -55,6 +59,10 @@ export default function TaskListView({ projectId, title, headerSlot }) {
       ))}
 
       <AddSection projectId={projectId} />
+
+      {detailTaskId && (
+        <TaskDetailModal taskId={detailTaskId} onClose={() => setDetailTaskId(null)} />
+      )}
     </div>
   );
 }

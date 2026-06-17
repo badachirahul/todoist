@@ -58,7 +58,7 @@ function MoreMenu({ task, onEdit, onUpdate, onDelete }) {
   );
 }
 
-export default function TaskRow({ task, onComplete, onUpdate, onDelete }) {
+export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDetail }) {
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
   const color = PRIORITY_COLOR[task.priority] || PRIORITY_COLOR[4];
@@ -93,8 +93,8 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete }) {
         <Check size={12} strokeWidth={3} style={{ color }} className={hover ? "opacity-70" : "opacity-0"} />
       </button>
 
-      {/* Content + meta */}
-      <div className="min-w-0 flex-1 cursor-text" onClick={() => setEditing(true)}>
+      {/* Content + meta — click opens the detail modal (pencil does inline edit) */}
+      <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
         <p className="text-sm text-gray-800">{task.content}</p>
         {task.description && <p className="truncate text-xs text-gray-400">{task.description}</p>}
         {task.dueDate && (

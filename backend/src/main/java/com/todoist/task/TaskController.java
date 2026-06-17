@@ -40,6 +40,24 @@ public class TaskController {
         return taskService.create(projectId, userId, req);
     }
 
+    @GetMapping("/api/tasks/{taskId}")
+    public TaskDto get(@PathVariable UUID taskId, @AuthenticationPrincipal UUID userId) {
+        return taskService.get(taskId, userId);
+    }
+
+    @GetMapping("/api/tasks/{taskId}/subtasks")
+    public List<TaskDto> subtasks(@PathVariable UUID taskId, @AuthenticationPrincipal UUID userId) {
+        return taskService.listSubtasks(taskId, userId);
+    }
+
+    @PostMapping("/api/tasks/{taskId}/subtasks")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TaskDto createSubtask(@PathVariable UUID taskId,
+                                 @AuthenticationPrincipal UUID userId,
+                                 @Valid @RequestBody CreateTaskRequest req) {
+        return taskService.createSubtask(taskId, userId, req);
+    }
+
     @PatchMapping("/api/tasks/{taskId}")
     public TaskDto update(@PathVariable UUID taskId,
                           @AuthenticationPrincipal UUID userId,
