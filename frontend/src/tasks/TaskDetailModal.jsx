@@ -11,6 +11,7 @@ import {
 } from "../api/taskDetail";
 import DatePicker from "./DatePicker";
 import PriorityDropdown, { PRIORITY_COLOR } from "./PriorityDropdown";
+import LabelPicker, { LabelChips } from "./LabelPicker";
 
 function fmtDate(iso) {
   if (!iso) return "";
@@ -208,8 +209,18 @@ export default function TaskDetailModal({ taskId, onClose }) {
               <PropRow label="Priority">
                 <PriorityDropdown value={task.priority} onChange={(p) => update.mutate({ id: task.id, patch: { priority: p } })} />
               </PropRow>
-              {/* Labels arrive in Phase 6 — inert for now */}
-              <PropRow label="Labels" trailing={<Plus size={15} className="text-gray-400" />} />
+              <PropRow
+                label="Labels"
+                trailing={
+                  <LabelPicker
+                    task={task}
+                    align="right"
+                    trigger={<button className="rounded p-0.5 text-gray-400 hover:bg-gray-200"><Plus size={15} /></button>}
+                  />
+                }
+              >
+                {task.labels?.length > 0 && <LabelChips labels={task.labels} />}
+              </PropRow>
               {/* Reminders parked, Location premium — visual placeholders */}
               <PropRow label="Reminders" trailing={<Plus size={15} className="text-gray-400" />} />
               <PropRow label="Location" badge={<Lock size={12} className="text-gray-400" />} trailing={<Lock size={14} className="text-gray-300" />} />

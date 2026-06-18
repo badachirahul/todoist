@@ -1,6 +1,7 @@
 package com.todoist.task;
 
 import com.todoist.task.dto.CreateTaskRequest;
+import com.todoist.task.dto.SetLabelsRequest;
 import com.todoist.task.dto.TaskDto;
 import com.todoist.task.dto.UpdateTaskRequest;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,5 +71,12 @@ public class TaskController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID taskId, @AuthenticationPrincipal UUID userId) {
         taskService.delete(taskId, userId);
+    }
+
+    @PutMapping("/api/tasks/{taskId}/labels")
+    public TaskDto setLabels(@PathVariable UUID taskId,
+                             @AuthenticationPrincipal UUID userId,
+                             @RequestBody SetLabelsRequest req) {
+        return taskService.setLabels(taskId, userId, req.labelIds());
     }
 }

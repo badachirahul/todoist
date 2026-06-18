@@ -1,8 +1,10 @@
 package com.todoist.task.dto;
 
+import com.todoist.label.dto.LabelDto;
 import com.todoist.task.Task;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /** A task as exposed to the frontend. */
@@ -16,7 +18,8 @@ public record TaskDto(
         int priority,
         LocalDate dueDate,
         boolean completed,
-        int position
+        int position,
+        List<LabelDto> labels
 ) {
     public static TaskDto from(Task t) {
         return new TaskDto(
@@ -29,6 +32,10 @@ public record TaskDto(
                 t.getPriority(),
                 t.getDueDate(),
                 t.isCompleted(),
-                t.getPosition());
+                t.getPosition(),
+                t.getLabels().stream()
+                        .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+                        .map(LabelDto::from)
+                        .toList());
     }
 }

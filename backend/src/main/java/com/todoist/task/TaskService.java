@@ -5,6 +5,8 @@ import com.todoist.project.ProjectMemberRepository;
 import com.todoist.project.ProjectRepository;
 import com.todoist.project.Section;
 import com.todoist.project.SectionRepository;
+import com.todoist.label.Label;
+import com.todoist.label.LabelRepository;
 import com.todoist.task.dto.CreateTaskRequest;
 import com.todoist.task.dto.TaskDto;
 import com.todoist.task.dto.UpdateTaskRequest;
@@ -27,17 +29,20 @@ public class TaskService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final SectionRepository sectionRepository;
+    private final LabelRepository labelRepository;
 
     public TaskService(TaskRepository taskRepository,
                        ProjectRepository projectRepository,
                        UserRepository userRepository,
                        ProjectMemberRepository projectMemberRepository,
-                       SectionRepository sectionRepository) {
+                       SectionRepository sectionRepository,
+                       LabelRepository labelRepository) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.sectionRepository = sectionRepository;
+        this.labelRepository = labelRepository;
     }
 
     @Transactional(readOnly = true)
@@ -125,6 +130,18 @@ public class TaskService {
     public void delete(UUID taskId, UUID userId) {
         Task task = loadOwnedTask(taskId, userId);
         taskRepository.delete(task);
+    }
+
+    /** Replace a task's labels with the given set (only the user's own labels). */
+    @Transactional
+    public TaskDto setLabels(UUID taskId, UUID userId, List<UUID> labelIds) {
+        Task task = loadOwnedTask(taskId, userId);
+        List<Label> labels = (labelIds == null || labelIds.isEmpty())
+                ? List.of()
+                : labelRepository.findByUserIdAndIdIn(userId, labelIds);
+        task.getLabels().clear();
+        task.getLabels().addAll(labels);
+        return TaskDto.from(task);
     }
 
     private Task loadOwnedTask(UUID taskId, UUID userId) {

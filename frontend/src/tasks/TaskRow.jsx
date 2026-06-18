@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, CalendarDays, Pencil, Calendar, MoreHorizontal, Flag, Trash2 } from "lucide-react";
 import { PRIORITY_COLOR } from "./PriorityDropdown";
+import { LabelChips } from "./LabelPicker";
 import Popover from "../components/Popover";
 import DatePicker from "./DatePicker";
 import TaskForm from "./TaskForm";
@@ -97,11 +98,16 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
         <p className="text-sm text-gray-800">{task.content}</p>
         {task.description && <p className="truncate text-xs text-gray-400">{task.description}</p>}
-        {task.dueDate && (
-          <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-gray-500">
-            <CalendarDays size={13} />
-            {formatDue(task.dueDate)}
-          </span>
+        {(task.dueDate || task.labels?.length > 0) && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                <CalendarDays size={13} />
+                {formatDue(task.dueDate)}
+              </span>
+            )}
+            <LabelChips labels={task.labels} />
+          </div>
         )}
       </div>
 
