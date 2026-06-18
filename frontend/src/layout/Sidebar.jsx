@@ -19,6 +19,7 @@ import { useProjects } from "../api/projects";
 import AddTaskModal from "../tasks/AddTaskModal";
 import ProjectRow from "./ProjectRow";
 import ProjectModal from "../projects/ProjectModal";
+import SearchModal from "../search/SearchModal";
 
 const RED = "#dc4c3e";
 
@@ -60,6 +61,7 @@ export default function Sidebar() {
   const [addOpen, setAddOpen] = useState(false);
   // null = closed; "create" = new project; project object = rename
   const [projectModal, setProjectModal] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <aside className="flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
@@ -99,7 +101,7 @@ export default function Sidebar() {
 
       {/* Search + nav */}
       <nav className="mt-2 flex flex-col gap-0.5">
-        <button className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm text-gray-700 transition hover:bg-gray-200/60">
+        <button onClick={() => setSearchOpen(true)} className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm text-gray-700 transition hover:bg-gray-200/60">
           <Search size={20} className="text-gray-500" />
           <span className="flex-1 text-left">Search</span>
         </button>
@@ -137,6 +139,7 @@ export default function Sidebar() {
       </div>
 
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       {projectModal && (
         <ProjectModal
           project={projectModal === "create" ? null : projectModal}

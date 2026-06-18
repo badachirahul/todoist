@@ -19,4 +19,13 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             order by pm.project.inbox desc, pm.project.position asc
             """)
     List<Project> findActiveByMember(@Param("userId") UUID userId);
+
+    /** Search the user's (member-visible) projects by name. */
+    @Query("""
+            select pm.project from ProjectMember pm
+            where pm.user.id = :userId and pm.project.archived = false
+              and lower(pm.project.name) like lower(concat('%', :q, '%'))
+            order by pm.project.inbox desc, pm.project.position asc
+            """)
+    List<Project> searchByMember(@Param("userId") UUID userId, @Param("q") String q);
 }
