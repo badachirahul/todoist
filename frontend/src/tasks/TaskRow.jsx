@@ -112,7 +112,7 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
         </button>
         <DatePicker
           value={task.dueDate}
-          onChange={(d) => onUpdate({ dueDate: d })}
+          onChange={(d) => onUpdate(d ? { dueDate: d } : { clearDueDate: true })}
           align="right"
           trigger={
             <button className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Schedule task">

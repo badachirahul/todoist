@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Hash, Plus, Check, Paperclip } from "lucide-react";
+import { X, Hash, Plus, Check, Paperclip, Lock } from "lucide-react";
 import { useProjects } from "../api/projects";
 import {
   useTask,
@@ -109,11 +109,17 @@ function Comments({ taskId }) {
 }
 
 // --- Right properties panel ---
-function PropRow({ label, children }) {
+function PropRow({ label, children, badge, trailing }) {
   return (
     <div className="border-b border-gray-200 py-3">
-      <div className="text-xs font-medium text-gray-500">{label}</div>
-      <div className="mt-1">{children}</div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
+          {label}
+          {badge}
+        </div>
+        {trailing}
+      </div>
+      {children && <div className="mt-1">{children}</div>}
     </div>
   );
 }
@@ -195,14 +201,18 @@ export default function TaskDetailModal({ taskId, onClose }) {
                 <span className="flex items-center gap-1.5 text-sm text-gray-700"><Hash size={14} /> {project?.name}</span>
               </PropRow>
               <PropRow label="Date">
-                <DatePicker value={task.dueDate} onChange={(d) => d && update.mutate({ id: task.id, patch: { dueDate: d } })} />
+                <DatePicker value={task.dueDate} onChange={(d) => update.mutate({ id: task.id, patch: d ? { dueDate: d } : { clearDueDate: true } })} />
               </PropRow>
+              {/* Premium in real Todoist (≠ Date) — deferred, shown locked */}
+              <PropRow label="Deadline" badge={<Lock size={12} className="text-gray-400" />} trailing={<Lock size={14} className="text-gray-300" />} />
               <PropRow label="Priority">
                 <PriorityDropdown value={task.priority} onChange={(p) => update.mutate({ id: task.id, patch: { priority: p } })} />
               </PropRow>
-              <PropRow label="Labels">
-                <span className="text-sm text-gray-400">Coming in Phase 6</span>
-              </PropRow>
+              {/* Labels arrive in Phase 6 — inert for now */}
+              <PropRow label="Labels" trailing={<Plus size={15} className="text-gray-400" />} />
+              {/* Reminders parked, Location premium — visual placeholders */}
+              <PropRow label="Reminders" trailing={<Plus size={15} className="text-gray-400" />} />
+              <PropRow label="Location" badge={<Lock size={12} className="text-gray-400" />} trailing={<Lock size={14} className="text-gray-300" />} />
             </div>
           </div>
         )}

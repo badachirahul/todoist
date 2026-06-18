@@ -112,7 +112,8 @@ public class TaskService {
         if (req.content() != null) task.setContent(req.content());
         if (req.description() != null) task.setDescription(req.description());
         if (req.priority() != null) task.setPriority(req.priority());
-        if (req.dueDate() != null) task.setDueDate(req.dueDate());
+        if (Boolean.TRUE.equals(req.clearDueDate())) task.setDueDate(null);
+        else if (req.dueDate() != null) task.setDueDate(req.dueDate());
         if (req.completed() != null) {
             task.setCompleted(req.completed());
             task.setCompletedAt(req.completed() ? OffsetDateTime.now() : null);

@@ -35,7 +35,9 @@ export function useUpdateTask(projectId) {
       const previous = qc.getQueryData(tasksKey(projectId));
       qc.setQueryData(tasksKey(projectId), (old = []) => {
         if (patch.completed === true) return old.filter((t) => t.id !== id);
-        return old.map((t) => (t.id === id ? { ...t, ...patch } : t));
+        return old.map((t) =>
+          t.id === id ? { ...t, ...patch, ...(patch.clearDueDate ? { dueDate: null } : {}) } : t
+        );
       });
       return { previous };
     },
