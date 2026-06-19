@@ -54,7 +54,7 @@ function NavRow({ to, label, icon: Icon }) {
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onCollapse }) {
   const { data: user } = useMe();
   const { data: projects = [] } = useProjects();
   const initial = (user?.name?.[0] || "?").toUpperCase();
@@ -62,6 +62,7 @@ export default function Sidebar() {
   // null = closed; "create" = new project; project object = rename
   const [projectModal, setProjectModal] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [projectsCollapsed, setProjectsCollapsed] = useState(false);
 
   return (
     <aside className="flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
@@ -82,7 +83,9 @@ export default function Sidebar() {
         </button>
         <div className="ml-auto flex items-center gap-1 text-gray-500">
           <button className="rounded p-1.5 hover:bg-gray-200/60"><Bell size={18} /></button>
-          <button className="rounded p-1.5 hover:bg-gray-200/60"><PanelLeft size={18} /></button>
+          <button onClick={onCollapse} className="rounded p-1.5 hover:bg-gray-200/60" aria-label="Collapse sidebar">
+            <PanelLeft size={18} />
+          </button>
         </div>
       </div>
 
@@ -111,8 +114,18 @@ export default function Sidebar() {
       </nav>
 
       {/* My Projects */}
-      <div className="group mt-6 flex items-center px-2">
-        <span className="flex-1 text-xs font-semibold text-gray-500">My Projects</span>
+      <div className="group mt-6 flex items-center">
+        <NavLink
+          to="/projects"
+          className={({ isActive }) =>
+            [
+              "flex flex-1 items-center rounded-md px-1 py-1 text-[14px] transition",
+              isActive ? "bg-[#ffefe9] text-[#dc4c3e]" : "text-[#202020] hover:bg-gray-200/60",
+            ].join(" ")
+          }
+        >
+          <span className="truncate font-medium">My Projects</span>
+        </NavLink>
         <button
           onClick={() => setProjectModal("create")}
           className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
@@ -120,15 +133,24 @@ export default function Sidebar() {
         >
           <Plus size={16} />
         </button>
+        <button
+          onClick={() => setProjectsCollapsed((c) => !c)}
+          className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+          aria-label={projectsCollapsed ? "Expand projects" : "Collapse projects"}
+        >
+          <ChevronDown size={16} className={projectsCollapsed ? "-rotate-90 transition" : "transition"} />
+        </button>
       </div>
-      <div className="mt-1 flex flex-col gap-0.5">
-        {projects.filter((p) => !p.inbox).map((p) => (
-          <ProjectRow key={p.id} project={p} onRename={(proj) => setProjectModal(proj)} />
-        ))}
-        {projects.filter((p) => !p.inbox).length === 0 && (
-          <div className="px-2 text-xs text-gray-400">No projects yet</div>
-        )}
-      </div>
+      {!projectsCollapsed && (
+        <div className="mt-1 flex flex-col gap-0.5">
+          {projects.filter((p) => !p.inbox).map((p) => (
+            <ProjectRow key={p.id} project={p} onRename={(proj) => setProjectModal(proj)} />
+          ))}
+          {projects.filter((p) => !p.inbox).length === 0 && (
+            <div className="px-2 text-xs text-gray-400">No projects yet</div>
+          )}
+        </div>
+      )}
 
       {/* Bottom */}
       <div className="mt-auto">

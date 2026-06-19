@@ -1,6 +1,7 @@
 package com.todoist.task;
 
 import com.todoist.task.dto.CreateTaskRequest;
+import com.todoist.task.dto.MoveTaskRequest;
 import com.todoist.task.dto.SetLabelsRequest;
 import com.todoist.task.dto.TaskDto;
 import com.todoist.task.dto.UpdateTaskRequest;
@@ -65,6 +66,13 @@ public class TaskController {
                           @AuthenticationPrincipal UUID userId,
                           @Valid @RequestBody UpdateTaskRequest req) {
         return taskService.update(taskId, userId, req);
+    }
+
+    @PatchMapping("/api/tasks/{taskId}/move")
+    public TaskDto move(@PathVariable UUID taskId,
+                        @AuthenticationPrincipal UUID userId,
+                        @Valid @RequestBody MoveTaskRequest req) {
+        return taskService.move(taskId, userId, req);
     }
 
     @DeleteMapping("/api/tasks/{taskId}")

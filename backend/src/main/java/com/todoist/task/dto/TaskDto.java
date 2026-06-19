@@ -19,9 +19,15 @@ public record TaskDto(
         LocalDate dueDate,
         boolean completed,
         int position,
+        int subtaskTotal,
+        int subtaskDone,
         List<LabelDto> labels
 ) {
     public static TaskDto from(Task t) {
+        return from(t, 0, 0);
+    }
+
+    public static TaskDto from(Task t, int subtaskTotal, int subtaskDone) {
         return new TaskDto(
                 t.getId(),
                 t.getProject().getId(),
@@ -33,6 +39,8 @@ public record TaskDto(
                 t.getDueDate(),
                 t.isCompleted(),
                 t.getPosition(),
+                subtaskTotal,
+                subtaskDone,
                 t.getLabels().stream()
                         .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
                         .map(LabelDto::from)

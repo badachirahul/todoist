@@ -2,9 +2,10 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import Popover from "../components/Popover";
 import TaskComposer from "./TaskComposer";
+import TaskTree from "./TaskTree";
 import { useRenameSection, useDeleteSection } from "../api/sections";
 
-export default function SectionBlock({ section, tasks, renderRow, projectId }) {
+export default function SectionBlock({ section, tasks, projectId, onOpenDetail }) {
   const [collapsed, setCollapsed] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(section.name);
@@ -62,7 +63,12 @@ export default function SectionBlock({ section, tasks, renderRow, projectId }) {
 
       {!collapsed && (
         <div className="mt-1 pl-6">
-          {tasks.map(renderRow)}
+          <TaskTree
+            tasks={tasks}
+            sectionId={section.id}
+            projectId={projectId}
+            onOpenDetail={onOpenDetail}
+          />
           <TaskComposer projectId={projectId} sectionId={section.id} />
         </div>
       )}

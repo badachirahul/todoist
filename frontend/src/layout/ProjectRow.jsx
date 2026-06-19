@@ -1,18 +1,52 @@
-import { useNavigate } from "react-router-dom";
-import { NavLink } from "react-router-dom";
-import { Hash, MoreHorizontal, Pencil, Heart, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useNavigate, NavLink } from "react-router-dom";
+import {
+  Hash, MoreHorizontal, ArrowUp, ArrowDown, Pencil, Heart, ArrowRight, Copy,
+  UserPlus, Link2, Activity, LayoutTemplate, Gem, Puzzle, Download, Upload,
+  Mail, CalendarDays, Archive, Trash2,
+} from "lucide-react";
 import Popover from "../components/Popover";
+import ProjectModal from "../projects/ProjectModal";
+import ShareDialog from "../projects/ShareDialog";
 import { useUpdateProject, useDeleteProject } from "../api/projects";
 
-/** A project row in the sidebar with a hover ⋯ menu (rename / favorite / delete). */
+function Item({ icon: Icon, label, onClick, danger, disabled }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left",
+        disabled
+          ? "cursor-default text-gray-300"
+          : danger
+            ? "text-[#dc4c3e] hover:bg-gray-100"
+            : "text-gray-700 hover:bg-gray-100",
+      ].join(" ")}
+    >
+      <Icon size={15} className="flex-none" /> <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+const Divider = () => <div className="my-1 border-t border-gray-100" />;
+
+/** A project row in the sidebar with the full Todoist ⋯ context menu. */
 export default function ProjectRow({ project, onRename }) {
   const navigate = useNavigate();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const [shareOpen, setShareOpen] = useState(false);
+  // null = closed; otherwise the position to insert a new sibling at.
+  const [addAt, setAddAt] = useState(null);
 
   function remove() {
     deleteProject.mutate(project.id);
     navigate("/inbox");
+  }
+
+  function copyLink() {
+    navigator.clipboard?.writeText(`${window.location.origin}/project/${project.id}`);
   }
 
   const menuTrigger = (
@@ -40,31 +74,48 @@ export default function ProjectRow({ project, onRename }) {
         {project.favorite && <Heart size={13} className="text-[#dc4c3e]" fill="#dc4c3e" />}
       </NavLink>
 
-      <Popover trigger={menuTrigger} align="right" className="w-48 p-1 text-sm">
+      <Popover trigger={menuTrigger} align="right" className="w-60 p-1 text-sm">
         {(close) => (
           <div>
-            <button
-              onClick={() => { onRename(project); close(); }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-gray-700 hover:bg-gray-100"
-            >
-              <Pencil size={15} /> Rename
-            </button>
-            <button
+            <Item icon={ArrowUp} label="Add project above" onClick={() => { setAddAt(project.position); close(); }} />
+            <Item icon={ArrowDown} label="Add project below" onClick={() => { setAddAt(project.position + 1); close(); }} />
+            <Divider />
+            <Item icon={Pencil} label="Edit" onClick={() => { onRename(project); close(); }} />
+            <Item
+              icon={Heart}
+              label={project.favorite ? "Remove from favorites" : "Add to favorites"}
               onClick={() => { updateProject.mutate({ id: project.id, patch: { favorite: !project.favorite } }); close(); }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-gray-700 hover:bg-gray-100"
-            >
-              <Heart size={15} /> {project.favorite ? "Remove from favorites" : "Add to favorites"}
-            </button>
-            <div className="my-1 border-t border-gray-100" />
-            <button
-              onClick={() => { remove(); close(); }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[#dc4c3e] hover:bg-gray-100"
-            >
-              <Trash2 size={15} /> Delete
-            </button>
+            />
+            <Item icon={ArrowRight} label="Move to…" disabled />
+            <Item icon={Copy} label="Duplicate" disabled />
+            <Divider />
+            <Item icon={UserPlus} label="Share" onClick={() => { setShareOpen(true); close(); }} />
+            <Item icon={Link2} label="Copy link to project" onClick={() => { copyLink(); close(); }} />
+            <Item icon={Activity} label="View activity" disabled />
+            <Divider />
+            <Item icon={LayoutTemplate} label="Save as template" disabled />
+            <Item icon={Gem} label="Browse templates" disabled />
+            <Divider />
+            <Item icon={Puzzle} label="Add extension…" disabled />
+            <Item icon={Download} label="Import from CSV" disabled />
+            <Item icon={Upload} label="Export to CSV" disabled />
+            <Item icon={Mail} label="Email tasks to this project" disabled />
+            <Item icon={CalendarDays} label="Project calendar feed" disabled />
+            <Divider />
+            <Item
+              icon={Archive}
+              label="Archive"
+              onClick={() => { updateProject.mutate({ id: project.id, patch: { archived: true } }); navigate("/inbox"); close(); }}
+            />
+            <Item icon={Trash2} label="Delete" danger onClick={() => { remove(); close(); }} />
           </div>
         )}
       </Popover>
+
+      {addAt != null && (
+        <ProjectModal project={null} insertPosition={addAt} onClose={() => setAddAt(null)} />
+      )}
+      {shareOpen && <ShareDialog project={project} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

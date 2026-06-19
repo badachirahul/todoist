@@ -6,7 +6,7 @@ import { useCreateProject, useUpdateProject } from "../api/projects";
  * Create or rename a project. Parent mounts it only while open, so state seeds
  * correctly from `project` (rename) or empty (create).
  */
-export default function ProjectModal({ project, onClose }) {
+export default function ProjectModal({ project, onClose, insertPosition }) {
   const editing = !!project;
   const [name, setName] = useState(project?.name ?? "");
   const createProject = useCreateProject();
@@ -17,7 +17,9 @@ export default function ProjectModal({ project, onClose }) {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (editing) updateProject.mutate({ id: project.id, patch: { name: trimmed } });
-    else createProject.mutate({ name: trimmed });
+    else createProject.mutate(
+      insertPosition != null ? { name: trimmed, position: insertPosition } : { name: trimmed }
+    );
     onClose();
   }
 

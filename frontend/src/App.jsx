@@ -6,6 +6,7 @@ import AppLayout from "./layout/AppLayout";
 import ViewPlaceholder from "./views/ViewPlaceholder";
 import InboxView from "./views/InboxView";
 import ProjectView from "./views/ProjectView";
+import ProjectsView from "./views/ProjectsView";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="upcoming" element={<ViewPlaceholder title="Upcoming" />} />
           <Route path="filters" element={<ViewPlaceholder title="Filters & Labels" />} />
           <Route path="reporting" element={<ViewPlaceholder title="Reporting" />} />
+          <Route path="projects" element={<ProjectsView />} />
           <Route path="project/:projectId" element={<ProjectView />} />
           <Route path="*" element={<Navigate to="/inbox" replace />} />
         </Route>

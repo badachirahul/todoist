@@ -11,6 +11,7 @@ Building a clone of [Todoist](https://www.todoist.com/). Goal: an **exact** UI c
 - **Vite** (build tool / dev server, runs on `localhost:5173`)
 - **Tailwind CSS** — total visual control, required for an exact pixel clone (a pre-styled library like MUI would fight us, so MUI is out)
 - **shadcn/ui** — component *behaviors* (dropdowns, dialogs, date pickers, drag handles) as code we own and restyle freely
+- **dnd-kit** (`@dnd-kit/core` + `/sortable` + `/utilities`) — drag-and-drop engine for task reorder/nesting (sortable-tree pattern; chosen over @hello-pangea/dnd for arbitrary nesting + custom drop indicator). Added 2026-06-18.
 - **TanStack Query** — server-state: caching, refetch, optimistic updates (instant task check-off feel; refetch-on-focus is our cheap stand-in for real-time pre-WebSocket)
 - **React Router** — routing
 
@@ -272,11 +273,16 @@ todoist/
 
 **Phase 4 — Tasks in a list (core engine) = Inbox.** Task CRUD (scoped to project/members). FE: task list, task row (checkbox, priority color, date chip, hover actions), optimistic complete via TanStack Query. **Reusable components: `DatePicker`, `PriorityDropdown`, `TaskComposer`.** Add task (inline + global modal, context-aware default project). Inline edit (✏️→Save). Task ⋯ menu. Point Inbox route here. ✅ Inbox fully works.
 
-**Phase 5 — Projects.** Project CRUD (create/rename/archive/favorite/delete), project ⋯ menu, sidebar list. Sections. Sub-tasks (`parentTaskId`). Task detail modal (props panel, comments, sub-tasks, inline edit).
+**Phase 5 — Projects. ✅ + extended.** Project CRUD (create/rename/archive/favorite/delete), project ⋯ menu, sidebar list. Sections. Sub-tasks (`parentTaskId`). Task detail modal (props panel, comments, sub-tasks, inline edit).
+- **Added 2026-06-18:** "My Projects" landing page (`/projects` — search filter, archived-only toggle, Add). Full project ⋯ context menu matching `project-context-menu-full.png` (add above/below w/ `position` insert, Copy link, Archive wired; templates/CSV/calendar-feed/Move/Duplicate rendered inert = Phase 8). Sidebar "My Projects" header is now a link (hover + collapse chevron).
+- **Drag-and-drop task nesting (dnd-kit). ✅ drag/drop + drop-indicator confirmed working (2026-06-18):** flat task list now includes sub-tasks (+ per-task `subtaskDone/Total` for the `0/N` indicator); `PATCH /api/tasks/{id}/move` (parent/section/position, cycle-guarded, sibling reindex). FE tree in `tasks/TaskTree.jsx` + `tasks/treeUtils.js`: indent, collapse, DragOverlay, optimistic `useMoveTask`. Works in Inbox + projects (shared `TaskListView`/`SectionBlock`). Cross-section drag deferred. **Orange drop-indicator (locked):** at the projected nesting depth it OVERLAYS the row's gray divider on the same Y — short gray segment, then the orange circle, then the orange line to the row end (Todoist-style); rendered at the top of the drop gap (`pb-7`, `top:-1px`), `base = depth*INDENT + GUTTER`. **Nesting cap (locked):** `MAX_DEPTH = 4` (0-indexed → 5 levels; set 3 for a 4-level limit). The drag projection clamps to the cap AND subtracts the dragged task's own sub-tree height, so a dragged branch can't push its children past the limit. Drag-side only — backend `move` + detail-modal "Add sub-task" are not yet guarded.
+  - _Still tuning (NOT yet locked): row indentation amounts, the `-ml-6` handle hover-zone, sidebar collapse — leave these out of "done" until confirmed._
 
 **Phase 6 — Search & Labels.** Search (tasks/projects). Labels (`Label`/`TaskLabel`, `@` picker in composer + detail panel) — after Labels-picker UI is captured.
 
-**Phase 7 — Collaboration.** Project sharing/invites, `ProjectMember` roles, assignees, member-visible comments. Real-time via SSE/WebSocket (replaces refetch-on-focus).
+**Phase 7 — Collaboration. 🚧 STARTED 2026-06-18.** Project sharing/invites, `ProjectMember` roles, assignees, member-visible comments. Real-time via SSE/WebSocket (replaces refetch-on-focus).
+- **Done:** functional **Share by email** — `GET/POST /api/projects/{id}/members`, `DELETE …/members/{userId}` (`MemberDto`/`AddMemberRequest`). Add = member-only, looks up invitee via email (404 unknown / 409 dup / 400 Inbox); remove = owner-only, can't remove OWNER. Invitee sees the project automatically (list is membership-based). FE: `projects/ShareDialog.jsx` + `api/members.js`, opened from the project ⋯ menu and the top-bar Share button (hidden on Inbox).
+- **Still pending:** assignees, member-visible comment surfacing, real-time (SSE/WebSocket).
 
 **Phase 8 — Deferred.** Today, Upcoming, Filters, Recurring, Reminders, Deadline/Location, Reporting/Karma, attachments.
 

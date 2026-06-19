@@ -20,6 +20,14 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             """)
     List<Project> findActiveByMember(@Param("userId") UUID userId);
 
+    /** Archived projects the user is a member of (for the "Archived projects only" view). */
+    @Query("""
+            select pm.project from ProjectMember pm
+            where pm.user.id = :userId and pm.project.archived = true
+            order by pm.project.position asc
+            """)
+    List<Project> findArchivedByMember(@Param("userId") UUID userId);
+
     /** Search the user's (member-visible) projects by name. */
     @Query("""
             select pm.project from ProjectMember pm

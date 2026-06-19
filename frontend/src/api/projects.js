@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
-/** All projects the user is a member of (Inbox first). */
-export function useProjects() {
+/**
+ * Projects the user is a member of (Inbox first). Pass `archived: true` to load
+ * the archived-only list (used by the My Projects page toggle); the default
+ * active list keys as ["projects"] so the sidebar usage stays untouched.
+ */
+export function useProjects(archived = false) {
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => (await api.get("/api/projects")).data,
+    queryKey: archived ? ["projects", "archived"] : ["projects"],
+    queryFn: async () =>
+      (await api.get("/api/projects", { params: archived ? { archived: true } : {} })).data,
   });
 }
 

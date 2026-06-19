@@ -48,6 +48,44 @@ export function useUpdateTask(projectId) {
   });
 }
 
+/**
+ * Move/re-parent a task (drag-and-drop). Optimistically re-parents and reindexes
+ * the destination sibling group in the cache (mirrors the backend) so the list
+ * doesn't flash, then reconciles with the server on settle.
+ */
+export function useMoveTask(projectId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, parentId, sectionId, position }) =>
+      (await api.patch(`/api/tasks/${id}/move`, { parentId, sectionId, position })).data,
+    onMutate: async ({ id, parentId, sectionId, position }) => {
+      await qc.cancelQueries({ queryKey: tasksKey(projectId) });
+      const previous = qc.getQueryData(tasksKey(projectId));
+      qc.setQueryData(tasksKey(projectId), (old = []) => {
+        if (!old.some((t) => t.id === id)) return old;
+        const next = old.map((t) =>
+          t.id === id ? { ...t, parentTaskId: parentId ?? null, sectionId: sectionId ?? null } : t
+        );
+        const moved = next.find((t) => t.id === id);
+        const sibs = next
+          .filter((t) => t.id !== id
+            && (t.parentTaskId ?? null) === (parentId ?? null)
+            && (t.sectionId ?? null) === (sectionId ?? null))
+          .sort((a, b) => a.position - b.position);
+        const idx = Math.max(0, Math.min(position, sibs.length));
+        sibs.splice(idx, 0, moved);
+        const pos = new Map(sibs.map((t, i) => [t.id, i]));
+        return next.map((t) => (pos.has(t.id) ? { ...t, position: pos.get(t.id) } : t));
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(tasksKey(projectId), ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: tasksKey(projectId) }),
+  });
+}
+
 /** Delete a task. Optimistic removal with rollback. */
 export function useDeleteTask(projectId) {
   const qc = useQueryClient();

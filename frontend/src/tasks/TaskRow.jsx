@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { Check, CalendarDays, Pencil, Calendar, MoreHorizontal, Flag, Trash2 } from "lucide-react";
+import {
+  Check, CalendarDays, Pencil, Calendar, MoreHorizontal, Flag, Trash2,
+  GripVertical, ChevronRight, ChevronDown, GitBranch,
+} from "lucide-react";
 import { PRIORITY_COLOR } from "./PriorityDropdown";
+import { INDENT } from "./treeUtils";
 import { LabelChips } from "./LabelPicker";
 import Popover from "../components/Popover";
 import DatePicker from "./DatePicker";
@@ -59,7 +63,11 @@ function MoreMenu({ task, onEdit, onUpdate, onDelete }) {
   );
 }
 
-export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDetail }) {
+export default function TaskRow({
+  task, onComplete, onUpdate, onDelete, onOpenDetail,
+  depth = 0, hasChildren = false, collapsed = false, onToggleCollapse,
+  dragHandle, isOverlay = false,
+}) {
   const [hover, setHover] = useState(false);
   const [editing, setEditing] = useState(false);
   const color = PRIORITY_COLOR[task.priority] || PRIORITY_COLOR[4];
@@ -67,7 +75,7 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
   // Inline edit: the row becomes the shared TaskForm with a Save button.
   if (editing) {
     return (
-      <div className="my-2 rounded-lg border border-gray-300 p-3 shadow-sm">
+      <div className="my-2 rounded-lg border border-gray-300 p-3 shadow-sm" style={{ marginLeft: depth * INDENT }}>
         <TaskForm
           initial={{ content: task.content, priority: task.priority, dueDate: task.dueDate }}
           submitLabel="Save"
@@ -78,12 +86,9 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
     );
   }
 
-  return (
-    <div
-      className="group flex items-start gap-3 border-b border-gray-100 py-2.5"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
+  // Checkbox + content + hover actions — shared by the normal row and the drag overlay.
+  const body = (
+    <>
       {/* Checkbox — border colored by priority; shows a check on hover */}
       <button
         onClick={onComplete}
@@ -98,12 +103,18 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
         <p className="text-sm text-gray-800">{task.content}</p>
         {task.description && <p className="truncate text-xs text-gray-400">{task.description}</p>}
-        {(task.dueDate || task.labels?.length > 0) && (
+        {(task.dueDate || task.labels?.length > 0 || task.subtaskTotal > 0) && (
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
             {task.dueDate && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                 <CalendarDays size={13} />
                 {formatDue(task.dueDate)}
+              </span>
+            )}
+            {task.subtaskTotal > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                <GitBranch size={13} className="-scale-x-100" />
+                {task.subtaskDone}/{task.subtaskTotal}
               </span>
             )}
             <LabelChips labels={task.labels} />
@@ -112,21 +123,70 @@ export default function TaskRow({ task, onComplete, onUpdate, onDelete, onOpenDe
       </div>
 
       {/* Hover actions: Edit · Schedule (date) · More (⋯) */}
-      <div className="flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
-        <button onClick={() => setEditing(true)} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Edit task">
-          <Pencil size={16} />
-        </button>
-        <DatePicker
-          value={task.dueDate}
-          onChange={(d) => onUpdate(d ? { dueDate: d } : { clearDueDate: true })}
-          align="right"
-          trigger={
-            <button className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Schedule task">
-              <Calendar size={16} />
-            </button>
-          }
-        />
-        <MoreMenu task={task} onEdit={() => setEditing(true)} onUpdate={onUpdate} onDelete={onDelete} />
+      {!isOverlay && (
+        <div className="flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+          <button onClick={() => setEditing(true)} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Edit task">
+            <Pencil size={16} />
+          </button>
+          <DatePicker
+            value={task.dueDate}
+            onChange={(d) => onUpdate(d ? { dueDate: d } : { clearDueDate: true })}
+            align="right"
+            trigger={
+              <button className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Schedule task">
+                <Calendar size={16} />
+              </button>
+            }
+          />
+          <MoreMenu task={task} onEdit={() => setEditing(true)} onUpdate={onUpdate} onDelete={onDelete} />
+        </div>
+      )}
+    </>
+  );
+
+  // Floating clone shown under the cursor while dragging.
+  if (isOverlay) {
+    return <div className="flex items-start gap-2 rounded-md bg-white px-3 py-2.5 shadow-lg">{body}</div>;
+  }
+
+  return (
+    // -ml-6 extends the hover zone into the left margin so the (depth-tracking)
+    // drag handle stays reachable; paddingLeft adds it back (+ the nesting indent).
+    <div
+      className="group relative -ml-6 flex items-start"
+      style={{ paddingLeft: 24 + depth * INDENT }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {/* Drag handle — in the left rail next to this row, shown on hover */}
+      <button
+        ref={dragHandle?.setActivatorNodeRef}
+        {...(dragHandle?.attributes ?? {})}
+        {...(dragHandle?.listeners ?? {})}
+        style={{ left: depth * INDENT + 4 }}
+        className="invisible absolute top-3 cursor-grab text-gray-300 group-hover:visible active:cursor-grabbing"
+        aria-label="Reorder task"
+      >
+        <GripVertical size={16} />
+      </button>
+
+      {/* Chevron gutter — fixed width so checkboxes align with or without a caret */}
+      <div className="flex w-[18px] flex-none justify-center pt-3">
+        {hasChildren && (
+          <button
+            onClick={onToggleCollapse}
+            className="rounded text-gray-500 hover:bg-gray-100"
+            aria-label={collapsed ? "Expand sub-tasks" : "Collapse sub-tasks"}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          </button>
+        )}
+      </div>
+
+      {/* Bordered content row — the divider starts here (at the checkbox), so it
+          aligns with the task and indents with sub-tasks. */}
+      <div className="flex flex-1 items-start gap-2 border-b border-gray-100 py-2.5">
+        {body}
       </div>
     </div>
   );

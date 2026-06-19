@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useTasks, useUpdateTask, useDeleteTask } from "../api/tasks";
+import { useTasks } from "../api/tasks";
 import { useSections } from "../api/sections";
-import TaskRow from "../tasks/TaskRow";
+import TaskTree from "../tasks/TaskTree";
 import TaskComposer from "../tasks/TaskComposer";
 import SectionBlock from "../tasks/SectionBlock";
 import AddSection from "../tasks/AddSection";
@@ -9,26 +9,13 @@ import TaskDetailModal from "../tasks/TaskDetailModal";
 
 /**
  * Shared "title + tasks + sections + add-task" view. Used by Inbox and every
- * project. Tasks with no section render first; sectioned tasks render under
- * their section headers.
+ * project. The sectionless tasks render as a drag-and-drop nesting tree first;
+ * sectioned tasks render under their section headers (each its own tree).
  */
 export default function TaskListView({ projectId, title, headerSlot }) {
   const { data: tasks = [], isLoading } = useTasks(projectId);
   const { data: sections = [] } = useSections(projectId);
-  const updateTask = useUpdateTask(projectId);
-  const deleteTask = useDeleteTask(projectId);
   const [detailTaskId, setDetailTaskId] = useState(null);
-
-  const renderRow = (task) => (
-    <TaskRow
-      key={task.id}
-      task={task}
-      onComplete={() => updateTask.mutate({ id: task.id, patch: { completed: true } })}
-      onUpdate={(patch) => updateTask.mutate({ id: task.id, patch })}
-      onDelete={() => deleteTask.mutate(task.id)}
-      onOpenDetail={() => setDetailTaskId(task.id)}
-    />
-  );
 
   const sectionless = tasks.filter((t) => !t.sectionId);
   const tasksOf = (sectionId) => tasks.filter((t) => t.sectionId === sectionId);
@@ -40,7 +27,14 @@ export default function TaskListView({ projectId, title, headerSlot }) {
         {headerSlot}
       </div>
 
-      <div className="mt-4">{sectionless.map(renderRow)}</div>
+      <div className="mt-4">
+        <TaskTree
+          tasks={sectionless}
+          sectionId={null}
+          projectId={projectId}
+          onOpenDetail={setDetailTaskId}
+        />
+      </div>
 
       {!isLoading && tasks.length === 0 && sections.length === 0 && (
         <p className="mt-3 text-sm text-gray-400">No tasks yet — add your first one below.</p>
@@ -53,8 +47,8 @@ export default function TaskListView({ projectId, title, headerSlot }) {
           key={section.id}
           section={section}
           tasks={tasksOf(section.id)}
-          renderRow={renderRow}
           projectId={projectId}
+          onOpenDetail={setDetailTaskId}
         />
       ))}
 
