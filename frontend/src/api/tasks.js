@@ -17,7 +17,10 @@ export function useCreateTask(projectId) {
   return useMutation({
     mutationFn: async (body) =>
       (await api.post(`/api/projects/${projectId}/tasks`, body)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: tasksKey(projectId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tasksKey(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects"] }); // refresh sidebar counts
+    },
   });
 }
 
@@ -44,7 +47,10 @@ export function useUpdateTask(projectId) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(tasksKey(projectId), ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: tasksKey(projectId) }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: tasksKey(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects"] }); // completing changes the count
+    },
   });
 }
 
@@ -100,6 +106,9 @@ export function useDeleteTask(projectId) {
     onError: (_err, _id, ctx) => {
       if (ctx?.previous) qc.setQueryData(tasksKey(projectId), ctx.previous);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: tasksKey(projectId) }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: tasksKey(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects"] }); // deleting changes the count
+    },
   });
 }

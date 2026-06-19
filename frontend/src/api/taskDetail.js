@@ -19,6 +19,7 @@ export function useUpdateTaskById() {
       qc.invalidateQueries({ queryKey: ["task", id] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["subtasks"] });
+      qc.invalidateQueries({ queryKey: ["projects"] }); // count may change (complete)
     },
   });
 }
@@ -36,7 +37,11 @@ export function useCreateSubtask(parentTaskId) {
   return useMutation({
     mutationFn: async (content) =>
       (await api.post(`/api/tasks/${parentTaskId}/subtasks`, { content })).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["subtasks", parentTaskId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["subtasks", parentTaskId] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });    // show in list + update 0/N
+      qc.invalidateQueries({ queryKey: ["projects"] }); // adds to the count
+    },
   });
 }
 

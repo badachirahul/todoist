@@ -22,6 +22,21 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     int countByProjectIdAndParentTaskIsNull(UUID projectId);
 
+    /** Open-task count per project (sidebar badge), for the given projects. */
+    @Query("""
+            select t.project.id as projectId, count(t) as cnt
+            from Task t
+            where t.completed = false and t.project.id in :projectIds
+            group by t.project.id
+            """)
+    List<ProjectOpenCount> openTaskCounts(@Param("projectIds") List<UUID> projectIds);
+
+    /** Projection for {@link #openTaskCounts}. */
+    interface ProjectOpenCount {
+        UUID getProjectId();
+        long getCnt();
+    }
+
     /** Per-parent sub-task tallies for the "done/total" indicator (incl. completed children). */
     @Query("""
             select t.parentTask.id as parentId,

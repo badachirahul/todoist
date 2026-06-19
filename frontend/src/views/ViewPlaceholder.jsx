@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 export default function ViewPlaceholder({ title, note }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <h1 className="text-[26px] font-bold leading-[35px] text-[#202020]">{title}</h1>
 
       <button
         className="mt-4 flex items-center gap-2 text-sm text-gray-500 hover:text-[#dc4c3e]"

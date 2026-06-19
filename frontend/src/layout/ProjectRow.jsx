@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate, NavLink, useMatch } from "react-router-dom";
 import {
   Hash, MoreHorizontal, ArrowUp, ArrowDown, Pencil, Heart, ArrowRight, Copy,
   UserPlus, Link2, Activity, LayoutTemplate, Gem, Puzzle, Download, Upload,
@@ -34,6 +34,7 @@ const Divider = () => <div className="my-1 border-t border-gray-100" />;
 /** A project row in the sidebar with the full Todoist ⋯ context menu. */
 export default function ProjectRow({ project, onRename }) {
   const navigate = useNavigate();
+  const active = !!useMatch(`/project/${project.id}`);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const [shareOpen, setShareOpen] = useState(false);
@@ -51,7 +52,7 @@ export default function ProjectRow({ project, onRename }) {
 
   const menuTrigger = (
     <button
-      className="rounded p-1 text-gray-400 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+      className="flex rounded p-1 text-gray-500 hover:bg-gray-300/60"
       aria-label="Project actions"
     >
       <MoreHorizontal size={16} />
@@ -59,21 +60,29 @@ export default function ProjectRow({ project, onRename }) {
   );
 
   return (
-    <div className="group flex items-center">
+    <div
+      className={[
+        "group flex items-center rounded-md pr-1 transition",
+        active ? "bg-[#ffefe9]" : "hover:bg-gray-200/60",
+      ].join(" ")}
+    >
       <NavLink
         to={`/project/${project.id}`}
-        className={({ isActive }) =>
-          [
-            "flex flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-sm transition",
-            isActive ? "bg-[#ffefe9] font-medium text-[#dc4c3e]" : "text-gray-700 hover:bg-gray-200/60",
-          ].join(" ")
-        }
+        className={[
+          "flex min-w-0 flex-1 items-center gap-3 py-1.5 pl-2 text-sm leading-[normal] transition",
+          active ? "font-medium text-[#dc4c3e]" : "text-[#202020]",
+        ].join(" ")}
       >
-        <Hash size={18} className="text-gray-500" />
+        <Hash size={18} className="flex-none text-gray-500" />
         <span className="flex-1 truncate">{project.name}</span>
-        {project.favorite && <Heart size={13} className="text-[#dc4c3e]" fill="#dc4c3e" />}
+        {project.favorite && <Heart size={13} className="flex-none text-[#dc4c3e]" fill="#dc4c3e" />}
       </NavLink>
 
+      {/* Right slot: task count by default, swaps to the ⋯ menu on row hover */}
+      {project.taskCount > 0 && (
+        <span className="px-1.5 text-xs text-gray-400 group-hover:hidden">{project.taskCount}</span>
+      )}
+      <div className="hidden pr-1 group-hover:block">
       <Popover trigger={menuTrigger} align="right" className="w-60 p-1 text-sm">
         {(close) => (
           <div>
@@ -111,6 +120,7 @@ export default function ProjectRow({ project, onRename }) {
           </div>
         )}
       </Popover>
+      </div>
 
       {addAt != null && (
         <ProjectModal project={null} insertPosition={addAt} onClose={() => setAddAt(null)} />

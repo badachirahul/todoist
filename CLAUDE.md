@@ -104,8 +104,14 @@ Goal is a pixel-faithful clone. Notes below are from real app screenshots. **Tex
 ### Brand / colors
 - Brand red ~`#dc4c3e` (Add task, selected project text, overdue/Today counts, primary buttons)
 - Sidebar background: very light gray; main content: white
-- Selected project row: light **peach/pink** background + red text
+- Selected project row: light **peach/pink** background (`#ffefe9`) + red text. NOTE: the **"My Projects" section header** selected state is **black text + `#ffefe9` bg** (NOT red text).
 - Muted gray for secondary text, counts, date chips, "+ Add task"
+
+### Typography (LOCKED 2026-06-19 — verified vs real Todoist with WhatFont)
+- **Font = Noto Sans**, loaded via Google Fonts in `frontend/index.html` (weights 400/500/600/700). Stack set on `--font-sans` + `body` in `frontend/src/index.css`: `-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", system-ui, sans-serif, <emoji fonts>` — the whole app inherits it.
+- Sidebar section title ("My Projects"): 14px / **600** / `rgb(32,32,32)` / line-height normal.
+- Project name (sidebar): 14px / **400** / `rgb(32,32,32)`.
+- Main page title (Inbox/project/view `<h1>`): **26px / 700 / 35px** line-height / `rgb(32,32,32)`.
 
 ### Sidebar (~250px)
 - Top: green circle avatar "R" + workspace name + ▾, then bell (notifications) + panel-toggle icon
@@ -276,7 +282,12 @@ todoist/
 **Phase 5 — Projects. ✅ + extended.** Project CRUD (create/rename/archive/favorite/delete), project ⋯ menu, sidebar list. Sections. Sub-tasks (`parentTaskId`). Task detail modal (props panel, comments, sub-tasks, inline edit).
 - **Added 2026-06-18:** "My Projects" landing page (`/projects` — search filter, archived-only toggle, Add). Full project ⋯ context menu matching `project-context-menu-full.png` (add above/below w/ `position` insert, Copy link, Archive wired; templates/CSV/calendar-feed/Move/Duplicate rendered inert = Phase 8). Sidebar "My Projects" header is now a link (hover + collapse chevron).
 - **Drag-and-drop task nesting (dnd-kit). ✅ drag/drop + drop-indicator confirmed working (2026-06-18):** flat task list now includes sub-tasks (+ per-task `subtaskDone/Total` for the `0/N` indicator); `PATCH /api/tasks/{id}/move` (parent/section/position, cycle-guarded, sibling reindex). FE tree in `tasks/TaskTree.jsx` + `tasks/treeUtils.js`: indent, collapse, DragOverlay, optimistic `useMoveTask`. Works in Inbox + projects (shared `TaskListView`/`SectionBlock`). Cross-section drag deferred. **Orange drop-indicator (locked):** at the projected nesting depth it OVERLAYS the row's gray divider on the same Y — short gray segment, then the orange circle, then the orange line to the row end (Todoist-style); rendered at the top of the drop gap (`pb-7`, `top:-1px`), `base = depth*INDENT + GUTTER`. **Nesting cap (locked):** `MAX_DEPTH = 4` (0-indexed → 5 levels; set 3 for a 4-level limit). The drag projection clamps to the cap AND subtracts the dragged task's own sub-tree height, so a dragged branch can't push its children past the limit. Drag-side only — backend `move` + detail-modal "Add sub-task" are not yet guarded.
-  - _Still tuning (NOT yet locked): row indentation amounts, the `-ml-6` handle hover-zone, sidebar collapse — leave these out of "done" until confirmed._
+  - Task row layout (locked): drag handle in a left rail via `-ml-6` hover-zone extension (reachable on hover, tracks depth); divider on an inner content row so it aligns with the task and indents with sub-tasks; `INDENT=24`, `GUTTER=18`.
+- **Sidebar "My Projects" + counts polish. ✅ confirmed working 2026-06-19:**
+  - **Project task counts:** `ProjectDto.taskCount` = open tasks per project (one grouped query in `listForUser`, no N+1). Sidebar shows it per `ProjectRow`, and on the **Inbox** nav row (`NavRow` `count` prop). Count **updates live** — task create/delete/complete/add-subtask invalidate `["projects"]` (prefix-matches the archived list too), so the badge refetches without a reload.
+  - **Project row:** full-row hover/active background (moved off the `NavLink` onto the row; active via `useMatch`); task count ⇄ `⋯` menu swap on hover (`group-hover:hidden` / `hidden group-hover:block`).
+  - **"My Projects" header states:** chevron reveals on **sidebar-wide** hover (`group/sidebar`), `+` and gray bg on **row** hover (`group/projects`); selected (`/projects`) = **black text + `#ffefe9` bg** (not red); header box matches nav rows (`px-2 py-1.5 rounded-md`).
+  - **Sidebar collapse animation:** `AppLayout` wraps the sidebar in a width-animating container (`transition-all duration-200 ease-in-out`, `w-[250px]`↔`w-0` + fade); `PanelLeft` collapses, a `PanelLeft` button in the top bar reopens.
 
 **Phase 6 — Search & Labels.** Search (tasks/projects). Labels (`Label`/`TaskLabel`, `@` picker in composer + detail panel) — after Labels-picker UI is captured.
 
@@ -294,7 +305,7 @@ todoist/
 - Maven project structure details (settle in Phase 0)
 - Natural-language date parsing approach (client vs server) — Phase 4/6
 - Labels-picker UI screenshot still needed before building Labels (Phase 6)
-- Exact hex colors + font family (capture from Firefox DevTools for pixel-exact)
+- ~~Exact hex colors + font family~~ — RESOLVED 2026-06-19: font = Noto Sans, see **Typography** above (captured via WhatFont). Continue capturing exact hex per-screen as needed.
 - Reminders behavior (parked — discuss before Phase 8)
 
 ---

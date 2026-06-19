@@ -23,7 +23,7 @@ export default function TaskListView({ projectId, title, headerSlot }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+        <h1 className="text-[26px] font-bold leading-[35px] text-[#202020]">{title}</h1>
         {headerSlot}
       </div>
 

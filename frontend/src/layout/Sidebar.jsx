@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useMatch } from "react-router-dom";
 import {
   Search,
   Inbox,
@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { to: "/reporting", label: "Reporting", icon: TrendingUp },
 ];
 
-function NavRow({ to, label, icon: Icon }) {
+function NavRow({ to, label, icon: Icon, count }) {
   return (
     <NavLink
       to={to}
@@ -48,6 +48,7 @@ function NavRow({ to, label, icon: Icon }) {
         <>
           <Icon size={20} className={isActive ? "text-[#dc4c3e]" : "text-gray-500"} />
           <span className="flex-1 truncate">{label}</span>
+          {count > 0 && <span className="text-xs text-gray-400">{count}</span>}
         </>
       )}
     </NavLink>
@@ -57,15 +58,17 @@ function NavRow({ to, label, icon: Icon }) {
 export default function Sidebar({ onCollapse }) {
   const { data: user } = useMe();
   const { data: projects = [] } = useProjects();
+  const inboxCount = projects.find((p) => p.inbox)?.taskCount ?? 0;
   const initial = (user?.name?.[0] || "?").toUpperCase();
   const [addOpen, setAddOpen] = useState(false);
   // null = closed; "create" = new project; project object = rename
   const [projectModal, setProjectModal] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+  const projectsActive = !!useMatch("/projects");
 
   return (
-    <aside className="flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
+    <aside className="group/sidebar flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
       {/* Workspace header */}
       <div className="flex items-center gap-2 px-2">
         <button className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-200/60">
@@ -109,33 +112,34 @@ export default function Sidebar({ onCollapse }) {
           <span className="flex-1 text-left">Search</span>
         </button>
         {NAV_ITEMS.map((item) => (
-          <NavRow key={item.to} {...item} />
+          <NavRow key={item.to} {...item} count={item.to === "/inbox" ? inboxCount : undefined} />
         ))}
       </nav>
 
-      {/* My Projects */}
-      <div className="group mt-6 flex items-center">
+      {/* My Projects — same px-2 py-1.5 rounded-md box as the nav rows above.
+          Chevron reveals on sidebar-wide hover; + and bg on this row's hover. */}
+      <div
+        className={[
+          "group/projects mt-6 flex items-center rounded-md px-2 py-1.5 transition",
+          projectsActive ? "bg-[#ffefe9]" : "hover:bg-gray-200/60",
+        ].join(" ")}
+      >
         <NavLink
           to="/projects"
-          className={({ isActive }) =>
-            [
-              "flex flex-1 items-center rounded-md px-1 py-1 text-[14px] transition",
-              isActive ? "bg-[#ffefe9] text-[#dc4c3e]" : "text-[#202020] hover:bg-gray-200/60",
-            ].join(" ")
-          }
+          className="flex flex-1 items-center truncate text-sm font-semibold leading-[normal] text-[#202020] transition"
         >
-          <span className="truncate font-medium">My Projects</span>
+          <span className="truncate">My Projects</span>
         </NavLink>
         <button
           onClick={() => setProjectModal("create")}
-          className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+          className="-my-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:bg-gray-300/60 group-hover/projects:opacity-100"
           aria-label="Add project"
         >
           <Plus size={16} />
         </button>
         <button
           onClick={() => setProjectsCollapsed((c) => !c)}
-          className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+          className="-my-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:bg-gray-300/60 group-hover/sidebar:opacity-100"
           aria-label={projectsCollapsed ? "Expand projects" : "Collapse projects"}
         >
           <ChevronDown size={16} className={projectsCollapsed ? "-rotate-90 transition" : "transition"} />

@@ -4,6 +4,7 @@ import com.todoist.project.dto.CreateProjectRequest;
 import com.todoist.project.dto.MemberDto;
 import com.todoist.project.dto.ProjectDto;
 import com.todoist.project.dto.UpdateProjectRequest;
+import com.todoist.task.TaskRepository;
 import com.todoist.user.User;
 import com.todoist.user.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -11,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,13 +23,16 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
 
     public ProjectService(ProjectRepository projectRepository,
                           ProjectMemberRepository projectMemberRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          TaskRepository taskRepository) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
+        this.taskRepository = taskRepository;
     }
 
     @Transactional(readOnly = true)
@@ -34,7 +40,17 @@ public class ProjectService {
         List<Project> projects = archived
                 ? projectRepository.findArchivedByMember(userId)
                 : projectRepository.findActiveByMember(userId);
-        return projects.stream().map(ProjectDto::from).toList();
+        if (projects.isEmpty()) return List.of();
+
+        // One grouped query for the sidebar open-task badges (avoids N+1).
+        Map<UUID, Integer> counts = new HashMap<>();
+        for (TaskRepository.ProjectOpenCount c :
+                taskRepository.openTaskCounts(projects.stream().map(Project::getId).toList())) {
+            counts.put(c.getProjectId(), (int) c.getCnt());
+        }
+        return projects.stream()
+                .map(p -> ProjectDto.from(p, counts.getOrDefault(p.getId(), 0)))
+                .toList();
     }
 
     @Transactional

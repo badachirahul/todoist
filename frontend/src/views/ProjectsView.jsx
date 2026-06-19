@@ -47,7 +47,7 @@ export default function ProjectsView() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-2xl font-bold text-gray-900">My Projects</h1>
+      <h1 className="text-[26px] font-bold leading-[35px] text-[#202020]">My Projects</h1>
       <p className="mt-1 text-sm text-gray-400">Free</p>
 
       {/* Search projects */}
