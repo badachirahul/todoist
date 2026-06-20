@@ -37,16 +37,16 @@ function NavRow({ to, label, icon: Icon, count }) {
       to={to}
       className={({ isActive }) =>
         [
-          "flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition",
+          "flex h-[34px] items-center gap-3 rounded-md px-2 text-sm transition",
           isActive
-            ? "bg-[#ffefe9] font-medium text-[#dc4c3e]"
+            ? "bg-[#ffefe5] font-semibold text-[#202020]"
             : "text-gray-700 hover:bg-gray-200/60",
         ].join(" ")
       }
     >
       {({ isActive }) => (
         <>
-          <Icon size={20} className={isActive ? "text-[#dc4c3e]" : "text-gray-500"} />
+          <Icon size={20} className={isActive ? "text-[#202020]" : "text-gray-500"} />
           <span className="flex-1 truncate">{label}</span>
           {count > 0 && <span className="text-xs text-gray-400">{count}</span>}
         </>
@@ -68,7 +68,7 @@ export default function Sidebar({ onCollapse }) {
   const projectsActive = !!useMatch("/projects");
 
   return (
-    <aside className="group/sidebar flex h-screen w-[250px] flex-col border-r border-gray-200 bg-[#fcfaf8] px-2 py-3">
+    <aside className="group/sidebar flex h-screen w-[280px] flex-col bg-[#fcfaf8] px-3 py-3">
       {/* Workspace header */}
       <div className="flex items-center gap-2 px-2">
         <button className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-gray-200/60">
@@ -95,7 +95,7 @@ export default function Sidebar({ onCollapse }) {
       {/* Add task */}
       <button
         onClick={() => setAddOpen(true)}
-        className="mt-4 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-gray-200/40"
+        className="mt-4 flex h-[34px] items-center gap-2 rounded-md px-2 text-sm font-semibold hover:bg-gray-200/40"
         style={{ color: RED }}
       >
         <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ backgroundColor: RED }}>
@@ -107,7 +107,7 @@ export default function Sidebar({ onCollapse }) {
 
       {/* Search + nav */}
       <nav className="mt-2 flex flex-col gap-0.5">
-        <button onClick={() => setSearchOpen(true)} className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm text-gray-700 transition hover:bg-gray-200/60">
+        <button onClick={() => setSearchOpen(true)} className="flex h-[34px] items-center gap-3 rounded-md px-2 text-sm text-gray-700 transition hover:bg-gray-200/60">
           <Search size={20} className="text-gray-500" />
           <span className="flex-1 text-left">Search</span>
         </button>
@@ -120,8 +120,8 @@ export default function Sidebar({ onCollapse }) {
           Chevron reveals on sidebar-wide hover; + and bg on this row's hover. */}
       <div
         className={[
-          "group/projects mt-6 flex items-center rounded-md px-2 py-1.5 transition",
-          projectsActive ? "bg-[#ffefe9]" : "hover:bg-gray-200/60",
+          "group/projects mt-6 flex h-[34px] items-center rounded-md px-2 transition",
+          projectsActive ? "bg-[#ffefe5]" : "hover:bg-gray-200/60",
         ].join(" ")}
       >
         <NavLink

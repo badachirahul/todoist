@@ -1,20 +1,9 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import Modal from "../components/Modal";
+import Avatar from "../components/Avatar";
 import { useMe } from "../auth/useMe";
 import { useMembers, useAddMember, useRemoveMember } from "../api/members";
-
-function Avatar({ name, avatarUrl }) {
-  const initial = (name?.[0] || "?").toUpperCase();
-  if (avatarUrl) {
-    return <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />;
-  }
-  return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
-      {initial}
-    </span>
-  );
-}
 
 /**
  * Share a project: list members and invite a new one by email. Only the owner
@@ -85,7 +74,7 @@ export default function ShareDialog({ project, onClose }) {
         <div className="flex flex-col gap-1">
           {members.map((m) => (
             <div key={m.userId} className="flex items-center gap-3 rounded-md px-1 py-1.5">
-              <Avatar name={m.name} avatarUrl={m.avatarUrl} />
+              <Avatar name={m.name} avatarUrl={m.avatarUrl} size={32} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-gray-800">{m.name}</p>
                 <p className="truncate text-xs text-gray-400">{m.email}</p>

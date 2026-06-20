@@ -21,6 +21,7 @@ public record TaskDto(
         int position,
         int subtaskTotal,
         int subtaskDone,
+        AssigneeDto assignee,
         List<LabelDto> labels
 ) {
     public static TaskDto from(Task t) {
@@ -41,6 +42,7 @@ public record TaskDto(
                 t.getPosition(),
                 subtaskTotal,
                 subtaskDone,
+                t.getAssignee() != null ? AssigneeDto.from(t.getAssignee()) : null,
                 t.getLabels().stream()
                         .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
                         .map(LabelDto::from)

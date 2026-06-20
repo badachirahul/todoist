@@ -33,7 +33,7 @@ export function LabelChips({ labels }) {
  * filters by typed text, and creates a new label on the fly. Used in the task
  * detail panel (and reusable elsewhere).
  */
-export default function LabelPicker({ task, trigger, align = "left" }) {
+export default function LabelPicker({ task, trigger, align = "left", fullWidth = false }) {
   const { data: labels = [] } = useLabels();
   const createLabel = useCreateLabel();
   const setTaskLabels = useSetTaskLabels();
@@ -58,7 +58,7 @@ export default function LabelPicker({ task, trigger, align = "left" }) {
   const exact = labels.some((l) => l.name.toLowerCase() === term.trim().toLowerCase());
 
   return (
-    <Popover trigger={trigger} align={align} className="w-56">
+    <Popover trigger={trigger} align={align} fullWidth={fullWidth} className="w-56">
       {() => (
         <div className="text-sm">
           <div className="border-b border-gray-100 p-2">

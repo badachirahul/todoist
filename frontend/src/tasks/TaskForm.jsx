@@ -1,11 +1,16 @@
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
 import DatePicker from "./DatePicker";
 import PriorityDropdown from "./PriorityDropdown";
+import AssigneePicker from "./AssigneePicker";
+import Avatar from "../components/Avatar";
+import { useMembers } from "../api/members";
 
 /**
- * Presentational add/edit form (name + Date + Priority). Decoupled from any
- * mutation: the parent passes onSubmit({content, priority, dueDate}). Shared by
- * the inline composer, the global modal, and inline task editing.
+ * Presentational add/edit form (name + Date + Priority [+ Assignee]). Decoupled
+ * from any mutation: the parent passes onSubmit({content, priority, dueDate,
+ * assigneeId}). Shared by the inline composer, the global modal, and inline edit.
+ * The assignee control only appears when `projectId` is a shared project (>1 member).
  */
 export default function TaskForm({
   initial,
@@ -15,20 +20,27 @@ export default function TaskForm({
   resetAfterSubmit = false,
   autoFocus = true,
   pending = false,
+  projectId,
 }) {
   const [content, setContent] = useState(initial?.content ?? "");
   const [priority, setPriority] = useState(initial?.priority ?? 4);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? null);
+  const [assigneeId, setAssigneeId] = useState(initial?.assigneeId ?? null);
+
+  const { data: members = [] } = useMembers(projectId);
+  const shared = members.length > 1;
+  const assignee = members.find((m) => m.userId === assigneeId);
 
   function submit(e) {
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) return;
-    onSubmit({ content: trimmed, priority, dueDate });
+    onSubmit({ content: trimmed, priority, dueDate, assigneeId });
     if (resetAfterSubmit) {
       setContent("");
       setPriority(4);
       setDueDate(null);
+      setAssigneeId(null);
     }
   }
 
@@ -45,6 +57,22 @@ export default function TaskForm({
       <div className="mt-3 flex items-center gap-2">
         <DatePicker value={dueDate} onChange={setDueDate} />
         <PriorityDropdown value={priority} onChange={setPriority} />
+        {shared && (
+          <AssigneePicker
+            projectId={projectId}
+            value={assigneeId}
+            onChange={setAssigneeId}
+            trigger={
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                {assignee ? <Avatar name={assignee.name} avatarUrl={assignee.avatarUrl} size={18} /> : <UserPlus size={15} />}
+                {assignee ? assignee.name : "Assign"}
+              </button>
+            }
+          />
+        )}
       </div>
 
       <div className="mt-3 flex items-center justify-end gap-2 border-t border-gray-100 pt-3">

@@ -27,6 +27,7 @@ export default function TaskComposer({ projectId, sectionId }) {
   return (
     <div className="mt-3 rounded-lg border border-gray-300 p-3 shadow-sm">
       <TaskForm
+        projectId={projectId}
         onSubmit={(values) => createTask.mutate({ ...values, sectionId })}
         onCancel={() => setOpen(false)}
         resetAfterSubmit

@@ -62,14 +62,14 @@ export default function ProjectRow({ project, onRename }) {
   return (
     <div
       className={[
-        "group flex items-center rounded-md pr-1 transition",
-        active ? "bg-[#ffefe9]" : "hover:bg-gray-200/60",
+        "group flex h-[34px] items-center rounded-md pr-1 transition",
+        active ? "bg-[#ffefe5]" : "hover:bg-gray-200/60",
       ].join(" ")}
     >
       <NavLink
         to={`/project/${project.id}`}
         className={[
-          "flex min-w-0 flex-1 items-center gap-3 py-1.5 pl-2 text-sm leading-[normal] transition",
+          "flex h-full min-w-0 flex-1 items-center gap-3 pl-2 text-sm leading-[normal] transition",
           active ? "font-medium text-[#dc4c3e]" : "text-[#202020]",
         ].join(" ")}
       >

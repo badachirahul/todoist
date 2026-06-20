@@ -16,6 +16,8 @@ public record UpdateTaskRequest(
         @Min(1) @Max(4) Integer priority,
         LocalDate dueDate,
         Boolean clearDueDate,
-        Boolean completed
+        Boolean completed,
+        java.util.UUID assigneeId,
+        Boolean clearAssignee
 ) {
 }

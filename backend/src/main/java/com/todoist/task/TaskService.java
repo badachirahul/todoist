@@ -92,6 +92,8 @@ public class TaskService {
             task.setSection(section);
         }
 
+        if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
+
         return TaskDto.from(taskRepository.save(task));
     }
 
@@ -138,7 +140,17 @@ public class TaskService {
             task.setCompleted(req.completed());
             task.setCompletedAt(req.completed() ? OffsetDateTime.now() : null);
         }
+        if (Boolean.TRUE.equals(req.clearAssignee())) task.setAssignee(null);
+        else if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
         return TaskDto.from(task); // managed entity; flushed on commit
+    }
+
+    /** Set a task's assignee, requiring that user to be a member of the task's project. */
+    private void applyAssignee(Task task, UUID assigneeId) {
+        if (!projectMemberRepository.existsByProjectIdAndUserId(task.getProject().getId(), assigneeId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assignee must be a member of the project");
+        }
+        task.setAssignee(userRepository.getReferenceById(assigneeId));
     }
 
     @Transactional

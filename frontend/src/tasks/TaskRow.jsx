@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { PRIORITY_COLOR } from "./PriorityDropdown";
 import { INDENT } from "./treeUtils";
+import Avatar from "../components/Avatar";
 import { LabelChips } from "./LabelPicker";
 import Popover from "../components/Popover";
 import DatePicker from "./DatePicker";
@@ -121,6 +122,11 @@ export default function TaskRow({
           </div>
         )}
       </div>
+
+      {/* Assignee avatar (shared projects) */}
+      {task.assignee && (
+        <Avatar name={task.assignee.name} avatarUrl={task.assignee.avatarUrl} size={22} className="mt-0.5" />
+      )}
 
       {/* Hover actions: Edit · Schedule (date) · More (⋯) */}
       {!isOverlay && (

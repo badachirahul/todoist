@@ -12,6 +12,7 @@ public record CreateTaskRequest(
         String description,
         @Min(1) @Max(4) Integer priority,
         LocalDate dueDate,
-        UUID sectionId
+        UUID sectionId,
+        UUID assigneeId
 ) {
 }

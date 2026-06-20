@@ -11,3 +11,12 @@
 body {
   font-family: var(--font-sans);
 }
+
+/* Scrollable but with no visible scrollbar (e.g. the date-picker calendar). */
+.no-scrollbar {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari */
+}

@@ -22,8 +22,8 @@ export default function AppLayout() {
           wrapper's width (+ a slight fade) so the main area slides over smoothly. */}
       <div
         className={[
-          "shrink-0 overflow-hidden transition-all duration-200 ease-in-out",
-          sidebarOpen ? "w-[250px] opacity-100" : "w-0 opacity-0",
+          "shrink-0 overflow-hidden transition-all duration-[250ms] ease-in-out",
+          sidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
         ].join(" ")}
       >
         <Sidebar onCollapse={() => setSidebarOpen(false)} />

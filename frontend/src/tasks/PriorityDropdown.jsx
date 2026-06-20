@@ -1,4 +1,4 @@
-import { Flag, Check } from "lucide-react";
+import { Flag, Check, ChevronDown } from "lucide-react";
 import Popover from "../components/Popover";
 
 // P1 red, P2 orange, P3 blue, P4 gray (default). Reused by composer + task detail.
@@ -11,16 +11,32 @@ export const PRIORITY_COLOR = {
 
 const OPTIONS = [1, 2, 3, 4];
 
-export default function PriorityDropdown({ value = 4, onChange }) {
+/**
+ * Priority selector. `variant="button"` (default) = bordered control for the
+ * composer; `variant="inline"` = borderless, full-width row with a flag + Pn on
+ * the left and a chevron on the right, peach hover — for the task detail panel.
+ */
+export default function PriorityDropdown({ value = 4, onChange, variant = "button" }) {
   const color = PRIORITY_COLOR[value];
+  const flag = <Flag size={16} style={{ color }} fill={value < 4 ? color : "none"} />;
 
-  const trigger = (
+  const trigger = variant === "inline" ? (
+    <button
+      type="button"
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-[#ffefe5]"
+    >
+      {flag}
+      <span className="flex-1 text-left">{value < 4 ? `P${value}` : "Priority"}</span>
+      <ChevronDown size={15} className="text-gray-400" />
+    </button>
+  ) : (
     <button
       type="button"
       className="flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
     >
-      <Flag size={16} style={{ color }} fill={value < 4 ? color : "none"} />
+      {flag}
       {value < 4 ? `P${value}` : "Priority"}
+      <ChevronDown size={15} className="text-gray-400" />
     </button>
   );
 
