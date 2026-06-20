@@ -59,12 +59,14 @@ export default function Sidebar({ onCollapse }) {
   const { data: user } = useMe();
   const { data: projects = [] } = useProjects();
   const inboxCount = projects.find((p) => p.inbox)?.taskCount ?? 0;
+  const favorites = projects.filter((p) => p.favorite && !p.inbox);
   const initial = (user?.name?.[0] || "?").toUpperCase();
   const [addOpen, setAddOpen] = useState(false);
   // null = closed; "create" = new project; project object = rename
   const [projectModal, setProjectModal] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+  const [favoritesCollapsed, setFavoritesCollapsed] = useState(false);
   const projectsActive = !!useMatch("/projects");
 
   return (
@@ -115,6 +117,29 @@ export default function Sidebar({ onCollapse }) {
           <NavRow key={item.to} {...item} count={item.to === "/inbox" ? inboxCount : undefined} />
         ))}
       </nav>
+
+      {/* Favorites — favorited projects, same rows as My Projects */}
+      {favorites.length > 0 && (
+        <>
+          <div className="group/fav mt-6 flex h-[34px] items-center rounded-md px-2 transition hover:bg-gray-200/60">
+            <span className="flex-1 truncate text-sm font-semibold leading-[normal] text-[#202020]">Favorites</span>
+            <button
+              onClick={() => setFavoritesCollapsed((c) => !c)}
+              className="-my-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:bg-gray-300/60 group-hover/sidebar:opacity-100"
+              aria-label={favoritesCollapsed ? "Expand favorites" : "Collapse favorites"}
+            >
+              <ChevronDown size={16} className={favoritesCollapsed ? "-rotate-90 transition" : "transition"} />
+            </button>
+          </div>
+          {!favoritesCollapsed && (
+            <div className="mt-1 flex flex-col gap-0.5">
+              {favorites.map((p) => (
+                <ProjectRow key={`fav-${p.id}`} project={p} onRename={(proj) => setProjectModal(proj)} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* My Projects — same px-2 py-1.5 rounded-md box as the nav rows above.
           Chevron reveals on sidebar-wide hover; + and bg on this row's hover. */}

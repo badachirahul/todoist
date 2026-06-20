@@ -27,6 +27,12 @@ export default function Popover({ trigger, children, align = "left", className =
       const r = el.getBoundingClientRect();
       const gap = 6;
       const panelH = panelRef.current?.offsetHeight ?? 0;
+      // Trigger not laid out (e.g. a hover-revealed ⋯ whose row just un-hovered):
+      // keep the last good position, just reveal once the panel has a height.
+      if (r.width === 0 && r.height === 0) {
+        if (panelH) setStyle((s) => (s ? { ...s, visibility: "visible" } : s));
+        return;
+      }
       let top = r.bottom + gap;
       if (panelH && top + panelH > window.innerHeight - gap) {
         top = Math.max(gap, window.innerHeight - gap - panelH);

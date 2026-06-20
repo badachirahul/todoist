@@ -75,7 +75,6 @@ export default function ProjectRow({ project, onRename }) {
       >
         <Hash size={18} className="flex-none text-gray-500" />
         <span className="flex-1 truncate">{project.name}</span>
-        {project.favorite && <Heart size={13} className="flex-none text-[#dc4c3e]" fill="#dc4c3e" />}
       </NavLink>
 
       {/* Right slot: task count by default, swaps to the ⋯ menu on row hover */}
