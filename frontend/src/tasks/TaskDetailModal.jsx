@@ -206,7 +206,7 @@ export default function TaskDetailModal({ taskId, onClose }) {
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header — ^/v navigate to the previous/next sibling task */}
-        <div className="flex h-12 flex-none items-center justify-between border-b border-gray-100 pl-3 pr-2 text-sm text-gray-500">
+        <div className="flex h-[48px] flex-none items-center justify-between border-b border-gray-100 pl-3 pr-2 text-sm text-gray-500">
           <span className="flex items-center gap-1.5">
             <Hash size={15} /> {project?.name || "Task"}
           </span>
@@ -305,7 +305,7 @@ export default function TaskDetailModal({ taskId, onClose }) {
             </div>
 
             {/* Right properties panel (228px, sidebar cream; rows are full-width) */}
-            <div className="w-[260px] min-w-[260px] flex-none overflow-y-auto bg-[#fcfaf8] px-0 py-2">
+            <div className="w-[260px] min-w-[260px] flex-none overflow-y-auto bg-[#fcfaf8] px-4 py-2">
               {/* Project (Type C) */}
               <ValueRow label="Project">
                 <span className="flex items-center gap-1.5 px-2 text-sm text-gray-700"><Hash size={14} className="text-gray-500" /> {project?.name}</span>
