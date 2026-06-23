@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Check, CalendarDays, Pencil, Calendar, MoreHorizontal, Flag, Trash2,
-  GripVertical, ChevronRight, ChevronDown, GitBranch,
+  GripVertical, ChevronRight, ChevronDown, GitBranch, MessageSquare,
 } from "lucide-react";
 import { PRIORITY_COLOR } from "./PriorityDropdown";
 import { INDENT } from "./treeUtils";
@@ -104,7 +104,7 @@ export default function TaskRow({
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpenDetail}>
         <p className="text-sm text-gray-800">{task.content}</p>
         {task.description && <p className="truncate text-xs text-gray-400">{task.description}</p>}
-        {(task.dueDate || task.labels?.length > 0 || task.subtaskTotal > 0) && (
+        {(task.dueDate || task.labels?.length > 0 || task.subtaskTotal > 0 || task.commentCount > 0) && (
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
             {task.dueDate && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
@@ -116,6 +116,12 @@ export default function TaskRow({
               <span className="inline-flex items-center gap-1 text-xs text-gray-400">
                 <GitBranch size={13} className="-scale-x-100" />
                 {task.subtaskDone}/{task.subtaskTotal}
+              </span>
+            )}
+            {task.commentCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                <MessageSquare size={13} />
+                {task.commentCount}
               </span>
             )}
             <LabelChips labels={task.labels} />

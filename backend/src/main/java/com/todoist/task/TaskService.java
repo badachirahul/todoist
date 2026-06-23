@@ -5,8 +5,13 @@ import com.todoist.project.ProjectMemberRepository;
 import com.todoist.project.ProjectRepository;
 import com.todoist.project.Section;
 import com.todoist.project.SectionRepository;
+import com.todoist.attachment.AttachmentRepository;
+import com.todoist.attachment.dto.AttachmentDto;
 import com.todoist.label.Label;
 import com.todoist.label.LabelRepository;
+import com.todoist.notification.NotificationService;
+import com.todoist.notification.NotificationType;
+import com.todoist.project.ProjectMember;
 import com.todoist.realtime.RealtimeService;
 import com.todoist.task.dto.CreateTaskRequest;
 import com.todoist.task.dto.MoveTaskRequest;
@@ -34,7 +39,10 @@ public class TaskService {
     private final ProjectMemberRepository projectMemberRepository;
     private final SectionRepository sectionRepository;
     private final LabelRepository labelRepository;
+    private final CommentRepository commentRepository;
+    private final AttachmentRepository attachmentRepository;
     private final RealtimeService realtime;
+    private final NotificationService notificationService;
 
     public TaskService(TaskRepository taskRepository,
                        ProjectRepository projectRepository,
@@ -42,14 +50,20 @@ public class TaskService {
                        ProjectMemberRepository projectMemberRepository,
                        SectionRepository sectionRepository,
                        LabelRepository labelRepository,
-                       RealtimeService realtime) {
+                       CommentRepository commentRepository,
+                       AttachmentRepository attachmentRepository,
+                       RealtimeService realtime,
+                       NotificationService notificationService) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.sectionRepository = sectionRepository;
         this.labelRepository = labelRepository;
+        this.commentRepository = commentRepository;
+        this.attachmentRepository = attachmentRepository;
         this.realtime = realtime;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -60,12 +74,17 @@ public class TaskService {
         for (TaskRepository.SubtaskCount c : taskRepository.subtaskCounts(projectId)) {
             counts.put(c.getParentId(), new int[]{(int) c.getTotal(), (int) c.getDone()});
         }
+        // One grouped query for the per-task comment-count badge.
+        Map<UUID, Integer> commentCounts = new HashMap<>();
+        for (CommentRepository.TaskCommentCount c : commentRepository.commentCountsByProject(projectId)) {
+            commentCounts.put(c.getTaskId(), (int) c.getCnt());
+        }
         // Flat list of every open task (incl. sub-tasks); the frontend nests them.
         return taskRepository.findByProjectIdAndCompletedFalseOrderByPosition(projectId)
                 .stream()
                 .map(t -> {
                     int[] c = counts.getOrDefault(t.getId(), ZERO_COUNT);
-                    return TaskDto.from(t, c[0], c[1]);
+                    return TaskDto.from(t, c[0], c[1], commentCounts.getOrDefault(t.getId(), 0));
                 })
                 .toList();
     }
@@ -98,14 +117,21 @@ public class TaskService {
 
         if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
 
-        TaskDto dto = TaskDto.from(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        // Notify the assignee if a task was created already assigned to someone else.
+        if (req.assigneeId() != null && !req.assigneeId().equals(userId)) {
+            notificationService.create(req.assigneeId(), NotificationType.TASK_ASSIGNED,
+                    actorName(userId), saved.getContent(), null, projectId, saved.getId(), null);
+        }
         realtime.publish(projectId);
-        return dto;
+        return TaskDto.from(saved);
     }
 
     @Transactional(readOnly = true)
     public TaskDto get(UUID taskId, UUID userId) {
-        return TaskDto.from(loadOwnedTask(taskId, userId));
+        Task task = loadOwnedTask(taskId, userId);
+        AttachmentDto att = attachmentRepository.findByTaskId(taskId).map(AttachmentDto::from).orElse(null);
+        return TaskDto.from(task, 0, 0, 0, att);
     }
 
     @Transactional(readOnly = true)
@@ -138,6 +164,9 @@ public class TaskService {
     @Transactional
     public TaskDto update(UUID taskId, UUID userId, UpdateTaskRequest req) {
         Task task = loadOwnedTask(taskId, userId);
+        UUID projectId = task.getProject().getId();
+        boolean wasCompleted = task.isCompleted();
+        UUID prevAssigneeId = task.getAssignee() != null ? task.getAssignee().getId() : null;
 
         if (req.content() != null) task.setContent(req.content());
         if (req.description() != null) task.setDescription(req.description());
@@ -150,8 +179,39 @@ public class TaskService {
         }
         if (Boolean.TRUE.equals(req.clearAssignee())) task.setAssignee(null);
         else if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
-        realtime.publish(task.getProject().getId());
+
+        // ---- Notifications (shared projects) -------------------------------
+        // Completed / reopened -> tell the other project members.
+        if (req.completed() != null && req.completed() != wasCompleted) {
+            notifyOtherMembers(projectId, userId,
+                    req.completed() ? NotificationType.TASK_COMPLETED : NotificationType.TASK_UNCOMPLETED,
+                    task);
+        }
+        // Newly assigned to someone else -> tell that assignee.
+        UUID newAssigneeId = task.getAssignee() != null ? task.getAssignee().getId() : null;
+        if (newAssigneeId != null && !newAssigneeId.equals(prevAssigneeId) && !newAssigneeId.equals(userId)) {
+            notificationService.create(newAssigneeId, NotificationType.TASK_ASSIGNED,
+                    actorName(userId), task.getContent(), null, projectId, task.getId(), null);
+        }
+
+        realtime.publish(projectId);
         return TaskDto.from(task); // managed entity; flushed on commit
+    }
+
+    /** Notify every member of the project except the actor (e.g. task completed). */
+    private void notifyOtherMembers(UUID projectId, UUID actorId, NotificationType type, Task task) {
+        String actor = actorName(actorId);
+        for (ProjectMember m : projectMemberRepository.findByProjectId(projectId)) {
+            UUID memberId = m.getUser().getId();
+            if (!memberId.equals(actorId)) {
+                notificationService.create(memberId, type, actor, task.getContent(),
+                        null, projectId, task.getId(), null);
+            }
+        }
+    }
+
+    private String actorName(UUID userId) {
+        return userRepository.findById(userId).map(User::getName).orElse("Someone");
     }
 
     /** Set a task's assignee, requiring that user to be a member of the task's project. */

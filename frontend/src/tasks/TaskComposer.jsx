@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import TaskForm from "./TaskForm";
 import { useCreateTask } from "../api/tasks";
+import { useUploadTaskAttachment } from "../api/attachments";
 
 /**
  * Inline "+ Add task". Collapsed it's a muted button; expanded it shows the
@@ -11,6 +12,7 @@ import { useCreateTask } from "../api/tasks";
 export default function TaskComposer({ projectId, sectionId }) {
   const [open, setOpen] = useState(false);
   const createTask = useCreateTask(projectId);
+  const uploadAttachment = useUploadTaskAttachment();
 
   if (!open) {
     return (
@@ -28,7 +30,12 @@ export default function TaskComposer({ projectId, sectionId }) {
     <div className="mt-3 rounded-lg border border-gray-300 p-3 shadow-sm">
       <TaskForm
         projectId={projectId}
-        onSubmit={(values) => createTask.mutate({ ...values, sectionId })}
+        onSubmit={({ file, ...values }) =>
+          createTask.mutate(
+            { ...values, sectionId },
+            { onSuccess: (task) => { if (file && task?.id) uploadAttachment.mutate({ taskId: task.id, file }); } }
+          )
+        }
         onCancel={() => setOpen(false)}
         resetAfterSubmit
         pending={createTask.isPending}

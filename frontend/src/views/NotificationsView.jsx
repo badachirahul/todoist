@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ListChecks, Circle, CircleDot, UserPlus, UserMinus, MessageSquare, Check } from "lucide-react";
+import { ListChecks, Circle, CircleDot, UserPlus, UserMinus, MessageSquare, Check, Plus, RotateCcw } from "lucide-react";
 import Avatar from "../components/Avatar";
+import emptyNotifications from "../assets/empty_notifications.png";
 import {
   useNotifications,
   useMarkAllRead,
@@ -11,6 +12,7 @@ import {
 
 const GREEN = "bg-emerald-600";
 const RED = "bg-[#dc4c3e]";
+const GRAY = "bg-gray-400";
 
 // Vertical gap between notification cards (applies to BOTH read and unread).
 // Tweak this single number to adjust the spacing.
@@ -24,6 +26,9 @@ const BADGES = {
   REMOVED_FROM_PROJECT: { bg: RED, icon: UserMinus },
   LEFT_PROJECT: { bg: RED, icon: UserMinus },
   COMMENT_ADDED: { bg: GREEN, icon: MessageSquare },
+  TASK_ASSIGNED: { bg: GREEN, icon: Plus },
+  TASK_COMPLETED: { bg: GREEN, icon: Check },
+  TASK_UNCOMPLETED: { bg: GRAY, icon: RotateCcw },
 };
 
 /** Relative "x hours/minutes ago" label. */
@@ -60,6 +65,12 @@ function message(n) {
       return <>{actor} left {subject}</>;
     case "COMMENT_ADDED":
       return <>{actor} added a comment to {subject}</>;
+    case "TASK_ASSIGNED":
+      return <>{actor} assigned you {subject}</>;
+    case "TASK_COMPLETED":
+      return <>{actor} completed {subject}</>;
+    case "TASK_UNCOMPLETED":
+      return <>{actor} reopened {subject}</>;
     default:
       return null;
   }
@@ -224,9 +235,10 @@ export default function NotificationsView() {
           {isLoading ? (
             <p className="px-3 py-8 text-sm text-gray-400">Loading…</p>
           ) : visible.length === 0 ? (
-            <p className="px-3 py-12 text-center text-sm text-gray-400">
-              {tab === "unread" ? "No unread notifications." : "No notifications yet."}
-            </p>
+            <div className="flex flex-col items-center pt-16 text-center">
+              <img src={emptyNotifications} alt="" className="w-[220px]" />
+              <p className="mt-4 text-[15px] text-gray-500">Nice work! You&rsquo;re all caught up.</p>
+            </div>
           ) : (
             visible.map((n, i) => (
               <div key={n.id} className="group ntf-item">

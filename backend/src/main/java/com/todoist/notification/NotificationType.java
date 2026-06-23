@@ -7,5 +7,8 @@ public enum NotificationType {
     REMOVED_FROM_PROJECT, // "{actor} removed you from {subject}"
     JOINED_PROJECT,       // "{actor} joined {subject}"
     LEFT_PROJECT,         // "{actor} left {subject}"
-    COMMENT_ADDED         // "{actor} added a comment to {subject}" (+ body = comment text)
+    COMMENT_ADDED,        // "{actor} added a comment to {subject}" (+ body = comment text)
+    TASK_ASSIGNED,        // "{actor} assigned you {subject}"
+    TASK_COMPLETED,       // "{actor} completed {subject}"
+    TASK_UNCOMPLETED      // "{actor} reopened {subject}"
 }

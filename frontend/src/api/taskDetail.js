@@ -58,6 +58,9 @@ export function useCreateComment(taskId) {
   return useMutation({
     mutationFn: async (content) =>
       (await api.post(`/api/tasks/${taskId}/comments`, { content })).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", taskId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      qc.invalidateQueries({ queryKey: ["tasks"] }); // refresh the row comment-count badge
+    },
   });
 }

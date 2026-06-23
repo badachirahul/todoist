@@ -1,5 +1,8 @@
 package com.todoist.task;
 
+import com.todoist.attachment.Attachment;
+import com.todoist.attachment.AttachmentRepository;
+import com.todoist.attachment.dto.AttachmentDto;
 import com.todoist.notification.NotificationService;
 import com.todoist.notification.NotificationType;
 import com.todoist.project.ProjectMember;
@@ -13,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -23,6 +28,7 @@ public class CommentService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final AttachmentRepository attachmentRepository;
     private final RealtimeService realtime;
     private final NotificationService notificationService;
 
@@ -30,12 +36,14 @@ public class CommentService {
                           TaskRepository taskRepository,
                           UserRepository userRepository,
                           ProjectMemberRepository projectMemberRepository,
+                          AttachmentRepository attachmentRepository,
                           RealtimeService realtime,
                           NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.attachmentRepository = attachmentRepository;
         this.realtime = realtime;
         this.notificationService = notificationService;
     }
@@ -43,8 +51,17 @@ public class CommentService {
     @Transactional(readOnly = true)
     public List<CommentDto> list(UUID taskId, UUID userId) {
         assertTaskMember(taskId, userId);
-        return commentRepository.findByTaskIdOrderByCreatedAt(taskId)
-                .stream().map(CommentDto::from).toList();
+        List<Comment> comments = commentRepository.findByTaskIdOrderByCreatedAt(taskId);
+        // Batch-load any comment attachments (avoids N+1).
+        Map<UUID, AttachmentDto> attachments = new HashMap<>();
+        if (!comments.isEmpty()) {
+            for (Attachment a : attachmentRepository.findByCommentIdIn(comments.stream().map(Comment::getId).toList())) {
+                attachments.put(a.getComment().getId(), AttachmentDto.from(a));
+            }
+        }
+        return comments.stream()
+                .map(c -> CommentDto.from(c, attachments.get(c.getId())))
+                .toList();
     }
 
     @Transactional

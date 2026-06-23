@@ -1,5 +1,6 @@
 package com.todoist.task.dto;
 
+import com.todoist.attachment.dto.AttachmentDto;
 import com.todoist.label.dto.LabelDto;
 import com.todoist.task.Task;
 
@@ -21,14 +22,24 @@ public record TaskDto(
         int position,
         int subtaskTotal,
         int subtaskDone,
+        int commentCount,
         AssigneeDto assignee,
-        List<LabelDto> labels
+        List<LabelDto> labels,
+        AttachmentDto attachment
 ) {
     public static TaskDto from(Task t) {
-        return from(t, 0, 0);
+        return from(t, 0, 0, 0, null);
     }
 
     public static TaskDto from(Task t, int subtaskTotal, int subtaskDone) {
+        return from(t, subtaskTotal, subtaskDone, 0, null);
+    }
+
+    public static TaskDto from(Task t, int subtaskTotal, int subtaskDone, int commentCount) {
+        return from(t, subtaskTotal, subtaskDone, commentCount, null);
+    }
+
+    public static TaskDto from(Task t, int subtaskTotal, int subtaskDone, int commentCount, AttachmentDto attachment) {
         return new TaskDto(
                 t.getId(),
                 t.getProject().getId(),
@@ -42,10 +53,12 @@ public record TaskDto(
                 t.getPosition(),
                 subtaskTotal,
                 subtaskDone,
+                commentCount,
                 t.getAssignee() != null ? AssigneeDto.from(t.getAssignee()) : null,
                 t.getLabels().stream()
                         .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
                         .map(LabelDto::from)
-                        .toList());
+                        .toList(),
+                attachment);
     }
 }

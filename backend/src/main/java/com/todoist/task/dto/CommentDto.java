@@ -1,5 +1,6 @@
 package com.todoist.task.dto;
 
+import com.todoist.attachment.dto.AttachmentDto;
 import com.todoist.task.Comment;
 
 import java.time.OffsetDateTime;
@@ -11,15 +12,21 @@ public record CommentDto(
         String authorName,
         String authorAvatarUrl,
         String content,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        AttachmentDto attachment
 ) {
     public static CommentDto from(Comment c) {
+        return from(c, null);
+    }
+
+    public static CommentDto from(Comment c, AttachmentDto attachment) {
         return new CommentDto(
                 c.getId(),
                 c.getTask().getId(),
                 c.getUser().getName(),
                 c.getUser().getAvatarUrl(),
                 c.getContent(),
-                c.getCreatedAt());
+                c.getCreatedAt(),
+                attachment);
     }
 }
