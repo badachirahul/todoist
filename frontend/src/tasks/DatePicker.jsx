@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CalendarDays, Sun, ArrowRight, Armchair, Ban, Clock, Repeat, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import Popover from "../components/Popover";
 
@@ -59,42 +59,88 @@ function MonthGrid({ first, selected, today, onPick, dimLabel }) {
   );
 }
 
-/** Infinitely-scrolling month calendar (appends months as you reach the bottom). */
+const EST_MONTH_H = 248; // estimated month height before it's measured (corrected on mount)
+const WINDOW_BUFFER = 3; // months kept mounted above/below the viewport
+
+/**
+ * Infinitely-scrolling month calendar — windowed so the DOM stays bounded no
+ * matter how far you scroll. Only the months near the viewport are mounted;
+ * off-screen months are unmounted and replaced by two spacer divs sized from
+ * measured month heights, which keeps scroll position (and the ‹ ○ › nav,
+ * sticky label, infinite scroll) behaving exactly as before.
+ */
 function Calendar({ selected, today, onPick }) {
   const start = useRef(new Date(today.getFullYear(), today.getMonth(), 1)).current;
-  const [count, setCount] = useState(12);
+  const monthDate = (i) => new Date(start.getFullYear(), start.getMonth() + i, 1);
+
+  const [total, setTotal] = useState(24); // how many months virtually exist (grows)
+  const [win, setWin] = useState({ start: 0, end: 12 }); // mounted index range [start, end)
   const [topIdx, setTopIdx] = useState(0);
+  const [, bump] = useState(0); // forces a recompute after heights are measured
+
   const scrollRef = useRef(null);
-  const monthRefs = useRef([]);
+  const heights = useRef(new Map()); // index -> measured height
+  const monthEls = useRef(new Map()); // index -> DOM node (mounted months only)
 
-  const months = useMemo(
-    () => Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth() + i, 1)),
-    [count, start]
-  );
+  const h = (i) => heights.current.get(i) ?? EST_MONTH_H;
+  const offsetOf = (i) => { let acc = 0; for (let k = 0; k < i; k++) acc += h(k); return acc; };
 
-  function onScroll() {
+  // Measure mounted months; correct the height map and recompute if it changed.
+  useLayoutEffect(() => {
+    let changed = false;
+    for (let i = win.start; i < win.end; i++) {
+      const el = monthEls.current.get(i);
+      if (!el) continue;
+      const measured = el.offsetHeight;
+      if (measured > 0 && Math.abs((heights.current.get(i) ?? 0) - measured) > 1) {
+        heights.current.set(i, measured);
+        changed = true;
+      }
+    }
+    if (changed) bump((n) => n + 1);
+  });
+
+  function recompute() {
     const c = scrollRef.current;
     if (!c) return;
-    if (c.scrollTop + c.clientHeight >= c.scrollHeight - 240) setCount((n) => n + 12); // infinite
-    let idx = 0;
-    for (let i = 0; i < monthRefs.current.length; i++) {
-      const el = monthRefs.current[i];
-      if (el && el.offsetTop - c.scrollTop <= 4) idx = i; else break;
+    const top = c.scrollTop;
+    const bottom = top + c.clientHeight;
+
+    let acc = 0, first = 0, last = total - 1;
+    for (let i = 0; i < total; i++) {
+      const hi = h(i);
+      if (acc + hi > top && acc <= top) first = i;
+      if (acc >= bottom) { last = i - 1; break; }
+      acc += hi;
+      last = i;
     }
-    setTopIdx(idx);
+    if (last < first) last = first;
+
+    if (last >= total - WINDOW_BUFFER - 1) setTotal((t) => t + 12); // grow infinitely
+    setWin({
+      start: Math.max(0, first - WINDOW_BUFFER),
+      end: Math.min(total, last + 1 + WINDOW_BUFFER),
+    });
+    setTopIdx(first);
   }
 
   function scrollToMonth(i) {
-    const el = monthRefs.current[Math.max(0, Math.min(i, months.length - 1))];
-    if (el && scrollRef.current) scrollRef.current.scrollTo({ top: el.offsetTop, behavior: "smooth" });
+    const target = Math.max(0, Math.min(i, total - 1));
+    if (scrollRef.current) scrollRef.current.scrollTo({ top: offsetOf(target), behavior: "smooth" });
   }
 
-  const top = months[topIdx] ?? months[0];
+  // Initial window once mounted.
+  useEffect(() => { recompute(); /* eslint-disable-next-line */ }, []);
+
+  const topSpacer = offsetOf(win.start);
+  const bottomSpacer = Math.max(0, offsetOf(total) - offsetOf(win.end));
+  const mounted = [];
+  for (let i = win.start; i < win.end; i++) mounted.push(i);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col border-t border-gray-100">
       <div className="flex items-center justify-between px-3 pt-2">
-        <span className="text-[13px] font-semibold text-gray-800">{monthLabel(top)}</span>
+        <span className="text-[13px] font-semibold text-gray-800">{monthLabel(monthDate(topIdx))}</span>
         <div className="flex items-center gap-1 text-gray-500">
           <button type="button" onClick={() => scrollToMonth(topIdx - 1)} className="rounded p-0.5 hover:bg-gray-100"><ChevronLeft size={16} /></button>
           <button type="button" onClick={() => scrollToMonth(0)} className="rounded p-0.5 hover:bg-gray-100"><Circle size={11} /></button>
@@ -104,12 +150,14 @@ function Calendar({ selected, today, onPick }) {
       <div className="grid grid-cols-7 gap-y-1 px-3 pt-1 text-center text-xs text-gray-400">
         {WEEKDAYS.map((w, i) => <div key={i}>{w}</div>)}
       </div>
-      <div ref={scrollRef} onScroll={onScroll} className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-1">
-        {months.map((m, i) => (
-          <div key={i} ref={(el) => (monthRefs.current[i] = el)}>
-            <MonthGrid first={m} selected={selected} today={today} onPick={onPick} dimLabel={i === topIdx} />
+      <div ref={scrollRef} onScroll={recompute} className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-1">
+        <div style={{ height: topSpacer }} />
+        {mounted.map((i) => (
+          <div key={i} ref={(el) => { if (el) monthEls.current.set(i, el); else monthEls.current.delete(i); }}>
+            <MonthGrid first={monthDate(i)} selected={selected} today={today} onPick={onPick} dimLabel={i === topIdx} />
           </div>
         ))}
+        <div style={{ height: bottomSpacer }} />
       </div>
     </div>
   );

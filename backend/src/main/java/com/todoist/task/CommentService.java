@@ -1,7 +1,12 @@
 package com.todoist.task;
 
+import com.todoist.notification.NotificationService;
+import com.todoist.notification.NotificationType;
+import com.todoist.project.ProjectMember;
 import com.todoist.project.ProjectMemberRepository;
+import com.todoist.realtime.RealtimeService;
 import com.todoist.task.dto.CommentDto;
+import com.todoist.user.User;
 import com.todoist.user.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,15 +23,21 @@ public class CommentService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final RealtimeService realtime;
+    private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                           TaskRepository taskRepository,
                           UserRepository userRepository,
-                          ProjectMemberRepository projectMemberRepository) {
+                          ProjectMemberRepository projectMemberRepository,
+                          RealtimeService realtime,
+                          NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.realtime = realtime;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -39,12 +50,26 @@ public class CommentService {
     @Transactional
     public CommentDto create(UUID taskId, UUID userId, String content) {
         Task task = assertTaskMember(taskId, userId);
+        User author = userRepository.getReferenceById(userId);
         Comment comment = new Comment();
         comment.setTask(task);
-        comment.setUser(userRepository.getReferenceById(userId));
+        comment.setUser(author);
         comment.setContent(content);
         // Flush so @CreationTimestamp is populated in the returned DTO.
-        return CommentDto.from(commentRepository.saveAndFlush(comment));
+        CommentDto dto = CommentDto.from(commentRepository.saveAndFlush(comment));
+
+        UUID projectId = task.getProject().getId();
+        // Notify every other member of the project that a comment was added.
+        for (ProjectMember m : projectMemberRepository.findByProjectId(projectId)) {
+            UUID memberId = m.getUser().getId();
+            if (!memberId.equals(userId)) {
+                notificationService.create(memberId, NotificationType.COMMENT_ADDED,
+                        author.getName(), task.getContent(), content, projectId, task.getId(), null);
+            }
+        }
+        // Push so other members with this task's modal open see the comment live.
+        realtime.publish(projectId);
+        return dto;
     }
 
     @Transactional
@@ -55,7 +80,9 @@ public class CommentService {
         if (!comment.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your comment");
         }
+        UUID projectId = comment.getTask().getProject().getId();
         commentRepository.delete(comment);
+        realtime.publish(projectId); // live-remove for other open modals
     }
 
     private Task assertTaskMember(UUID taskId, UUID userId) {

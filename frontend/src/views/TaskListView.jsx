@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTasks } from "../api/tasks";
 import { useSections } from "../api/sections";
 import TaskTree from "../tasks/TaskTree";
@@ -16,6 +17,22 @@ export default function TaskListView({ projectId, title, headerSlot }) {
   const { data: tasks = [], isLoading } = useTasks(projectId);
   const { data: sections = [] } = useSections(projectId);
   const [detailTaskId, setDetailTaskId] = useState(null);
+
+  // Deep link: /project/:id?task=<taskId> opens that task's detail modal
+  // (e.g. from a comment notification). Cleared from the URL when closed.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const t = searchParams.get("task");
+    if (t) setDetailTaskId(t);
+  }, [searchParams]);
+
+  const closeDetail = () => {
+    setDetailTaskId(null);
+    if (searchParams.has("task")) {
+      searchParams.delete("task");
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   const sectionless = tasks.filter((t) => !t.sectionId);
   const tasksOf = (sectionId) => tasks.filter((t) => t.sectionId === sectionId);
@@ -55,7 +72,7 @@ export default function TaskListView({ projectId, title, headerSlot }) {
       <AddSection projectId={projectId} />
 
       {detailTaskId && (
-        <TaskDetailModal taskId={detailTaskId} onClose={() => setDetailTaskId(null)} />
+        <TaskDetailModal taskId={detailTaskId} onClose={closeDetail} />
       )}
     </div>
   );

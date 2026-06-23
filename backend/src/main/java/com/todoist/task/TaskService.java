@@ -7,6 +7,7 @@ import com.todoist.project.Section;
 import com.todoist.project.SectionRepository;
 import com.todoist.label.Label;
 import com.todoist.label.LabelRepository;
+import com.todoist.realtime.RealtimeService;
 import com.todoist.task.dto.CreateTaskRequest;
 import com.todoist.task.dto.MoveTaskRequest;
 import com.todoist.task.dto.TaskDto;
@@ -33,19 +34,22 @@ public class TaskService {
     private final ProjectMemberRepository projectMemberRepository;
     private final SectionRepository sectionRepository;
     private final LabelRepository labelRepository;
+    private final RealtimeService realtime;
 
     public TaskService(TaskRepository taskRepository,
                        ProjectRepository projectRepository,
                        UserRepository userRepository,
                        ProjectMemberRepository projectMemberRepository,
                        SectionRepository sectionRepository,
-                       LabelRepository labelRepository) {
+                       LabelRepository labelRepository,
+                       RealtimeService realtime) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.sectionRepository = sectionRepository;
         this.labelRepository = labelRepository;
+        this.realtime = realtime;
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +98,9 @@ public class TaskService {
 
         if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
 
-        return TaskDto.from(taskRepository.save(task));
+        TaskDto dto = TaskDto.from(taskRepository.save(task));
+        realtime.publish(projectId);
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +130,9 @@ public class TaskService {
         task.setDueDate(req.dueDate());
         task.setPosition(taskRepository.findByParentTaskIdOrderByPosition(parentTaskId).size());
 
-        return TaskDto.from(taskRepository.save(task));
+        TaskDto dto = TaskDto.from(taskRepository.save(task));
+        realtime.publish(parent.getProject().getId());
+        return dto;
     }
 
     @Transactional
@@ -142,6 +150,7 @@ public class TaskService {
         }
         if (Boolean.TRUE.equals(req.clearAssignee())) task.setAssignee(null);
         else if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
+        realtime.publish(task.getProject().getId());
         return TaskDto.from(task); // managed entity; flushed on commit
     }
 
@@ -156,7 +165,9 @@ public class TaskService {
     @Transactional
     public void delete(UUID taskId, UUID userId) {
         Task task = loadOwnedTask(taskId, userId);
+        UUID projectId = task.getProject().getId();
         taskRepository.delete(task);
+        realtime.publish(projectId);
     }
 
     /** Replace a task's labels with the given set (only the user's own labels). */
@@ -168,6 +179,7 @@ public class TaskService {
                 : labelRepository.findByUserIdAndIdIn(userId, labelIds);
         task.getLabels().clear();
         task.getLabels().addAll(labels);
+        realtime.publish(task.getProject().getId());
         return TaskDto.from(task);
     }
 
@@ -218,6 +230,7 @@ public class TaskService {
         siblings.add(idx, task);
         for (int i = 0; i < siblings.size(); i++) siblings.get(i).setPosition(i);
 
+        realtime.publish(projectId);
         return TaskDto.from(task);
     }
 

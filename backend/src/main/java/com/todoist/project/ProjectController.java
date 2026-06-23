@@ -2,6 +2,8 @@ package com.todoist.project;
 
 import com.todoist.project.dto.AddMemberRequest;
 import com.todoist.project.dto.CreateProjectRequest;
+import com.todoist.project.dto.InvitationDto;
+import com.todoist.project.dto.InviteRequest;
 import com.todoist.project.dto.MemberDto;
 import com.todoist.project.dto.ProjectDto;
 import com.todoist.project.dto.UpdateProjectRequest;
@@ -27,9 +29,11 @@ import java.util.UUID;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final InvitationService invitationService;
 
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(ProjectService projectService, InvitationService invitationService) {
         this.projectService = projectService;
+        this.invitationService = invitationService;
     }
 
     /** Projects the current user is a member of (Inbox first). Pass ?archived=true for archived only. */
@@ -80,5 +84,28 @@ public class ProjectController {
                              @PathVariable UUID memberUserId,
                              @AuthenticationPrincipal UUID userId) {
         projectService.removeMember(projectId, userId, memberUserId);
+    }
+
+    // ---- Invitations (by email; may not be a registered user yet) ----------
+
+    @GetMapping("/{projectId}/invitations")
+    public List<InvitationDto> invitations(@PathVariable UUID projectId, @AuthenticationPrincipal UUID userId) {
+        return invitationService.listPending(projectId, userId);
+    }
+
+    @PostMapping("/{projectId}/invitations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InvitationDto invite(@PathVariable UUID projectId,
+                                @AuthenticationPrincipal UUID userId,
+                                @Valid @RequestBody InviteRequest req) {
+        return invitationService.invite(projectId, userId, req.email());
+    }
+
+    @DeleteMapping("/{projectId}/invitations/{invitationId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelInvitation(@PathVariable UUID projectId,
+                                 @PathVariable UUID invitationId,
+                                 @AuthenticationPrincipal UUID userId) {
+        invitationService.cancel(projectId, userId, invitationId);
     }
 }

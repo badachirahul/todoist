@@ -1,7 +1,13 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, GOOGLE_LOGIN_URL } from "../lib/api";
+import authImage1 from "../assets/auth_image1.svg";
+import authImage2 from "../assets/auth_image2.svg";
+import authImage3 from "../assets/auth_image3.svg";
+
+// Marketing artwork rotated in the right column (like Todoist's changing illustration).
+const AUTH_IMAGES = [authImage1, authImage2, authImage3];
 
 // Todoist wordmark logo (red stacked-bars icon + "todoist").
 function Logo() {
@@ -45,13 +51,22 @@ export default function AuthShell({
   footerLinkTo,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+  const from = location.state?.from || "/"; // return here after auth (e.g. an invite link)
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Start on a random image (so a refresh changes it) and auto-advance on a timer.
+  const [imageIdx, setImageIdx] = useState(() => Math.floor(Math.random() * AUTH_IMAGES.length));
+  useEffect(() => {
+    const id = setInterval(() => setImageIdx((i) => (i + 1) % AUTH_IMAGES.length), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,7 +77,7 @@ export default function AuthShell({
       await api.post(path, { email, password });
       // Refresh the cached user, then enter the app.
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      navigate("/", { replace: true });
+      navigate(from, { replace: true });
     } catch (err) {
       setError(messageFor(err, mode));
     } finally {
@@ -162,23 +177,21 @@ export default function AuthShell({
 
           <p className="text-sm text-gray-500">
             {footerPrompt}{" "}
-            <Link to={footerLinkTo} className="font-medium text-[#dc4c3e] hover:underline">
+            <Link to={footerLinkTo} state={location.state} className="font-medium text-[#dc4c3e] hover:underline">
               {footerLinkText}
             </Link>
           </p>
         </div>
       </div>
 
-      {/* Right column: cream marketing panel (art placeholder for now) */}
+      {/* Right column: cream marketing panel with rotating artwork */}
       <div className="hidden items-center justify-center bg-[#fdf6ec] md:flex md:w-[56%]">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex h-40 w-40 items-center justify-center rounded-3xl bg-white/70 shadow-sm">
-            <span className="text-6xl">✅</span>
-          </div>
-          <p className="mt-6 max-w-xs text-sm text-gray-500">
-            Organize your work and life, finally.
-          </p>
-        </div>
+        <img
+          key={imageIdx}
+          src={AUTH_IMAGES[imageIdx]}
+          alt=""
+          className="max-h-[78%] max-w-[78%] object-contain animate-[fadeIn_0.5s_ease]"
+        />
       </div>
     </div>
   );

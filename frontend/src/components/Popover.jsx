@@ -62,10 +62,9 @@ export default function Popover({ trigger, children, align = "left", className =
   useEffect(() => {
     if (!open) return;
     function onDocClick(e) {
-      if (
-        triggerRef.current && !triggerRef.current.contains(e.target) &&
-        panelRef.current && !panelRef.current.contains(e.target)
-      ) setOpen(false);
+      if (triggerRef.current?.contains(e.target)) return;          // the trigger
+      if (e.target.closest?.("[data-popover]")) return;            // this or a nested popover
+      setOpen(false);
     }
     function onKey(e) { if (e.key === "Escape") setOpen(false); }
     document.addEventListener("mousedown", onDocClick);
@@ -84,6 +83,7 @@ export default function Popover({ trigger, children, align = "left", className =
       {open && style && createPortal(
         <div
           ref={panelRef}
+          data-popover
           style={style}
           className={[
             "overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg",

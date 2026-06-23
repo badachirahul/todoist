@@ -28,6 +28,9 @@ export function useRemoveMember(projectId) {
   return useMutation({
     mutationFn: async (memberUserId) =>
       api.delete(`/api/projects/${projectId}/members/${memberUserId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: membersKey(projectId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: membersKey(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects"] }); // a "Leave" drops it from your sidebar
+    },
   });
 }

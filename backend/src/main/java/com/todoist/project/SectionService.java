@@ -1,6 +1,7 @@
 package com.todoist.project;
 
 import com.todoist.project.dto.SectionDto;
+import com.todoist.realtime.RealtimeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,13 +16,16 @@ public class SectionService {
     private final SectionRepository sectionRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final RealtimeService realtime;
 
     public SectionService(SectionRepository sectionRepository,
                           ProjectRepository projectRepository,
-                          ProjectMemberRepository projectMemberRepository) {
+                          ProjectMemberRepository projectMemberRepository,
+                          RealtimeService realtime) {
         this.sectionRepository = sectionRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.realtime = realtime;
     }
 
     @Transactional(readOnly = true)
@@ -38,20 +42,26 @@ public class SectionService {
         section.setProject(projectRepository.getReferenceById(projectId));
         section.setName(name);
         section.setPosition(sectionRepository.findByProjectIdOrderByPosition(projectId).size());
-        return SectionDto.from(sectionRepository.save(section));
+        SectionDto dto = SectionDto.from(sectionRepository.save(section));
+        realtime.publish(projectId);
+        return dto;
     }
 
     @Transactional
     public SectionDto rename(UUID sectionId, UUID userId, String name) {
         Section section = loadOwned(sectionId, userId);
         section.setName(name);
+        realtime.publish(section.getProject().getId());
         return SectionDto.from(section);
     }
 
     @Transactional
     public void delete(UUID sectionId, UUID userId) {
         // Deleting a section deletes its tasks too (section_id ON DELETE CASCADE, V3).
-        sectionRepository.delete(loadOwned(sectionId, userId));
+        Section section = loadOwned(sectionId, userId);
+        UUID projectId = section.getProject().getId();
+        sectionRepository.delete(section);
+        realtime.publish(projectId);
     }
 
     private Section loadOwned(UUID sectionId, UUID userId) {

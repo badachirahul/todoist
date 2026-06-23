@@ -1,9 +1,12 @@
 package com.todoist.project;
 
+import com.todoist.notification.NotificationService;
+import com.todoist.notification.NotificationType;
 import com.todoist.project.dto.CreateProjectRequest;
 import com.todoist.project.dto.MemberDto;
 import com.todoist.project.dto.ProjectDto;
 import com.todoist.project.dto.UpdateProjectRequest;
+import com.todoist.realtime.RealtimeService;
 import com.todoist.task.TaskRepository;
 import com.todoist.user.User;
 import com.todoist.user.UserRepository;
@@ -24,15 +27,24 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
+    private final RealtimeService realtime;
+    private final EmailService emailService;
+    private final NotificationService notificationService;
 
     public ProjectService(ProjectRepository projectRepository,
                           ProjectMemberRepository projectMemberRepository,
                           UserRepository userRepository,
-                          TaskRepository taskRepository) {
+                          TaskRepository taskRepository,
+                          RealtimeService realtime,
+                          EmailService emailService,
+                          NotificationService notificationService) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
+        this.realtime = realtime;
+        this.emailService = emailService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -99,6 +111,7 @@ public class ProjectService {
         if (req.color() != null) project.setColor(req.color());
         if (req.favorite() != null) project.setFavorite(req.favorite());
         if (req.archived() != null) project.setArchived(req.archived());
+        realtime.publish(projectId);
         return ProjectDto.from(project);
     }
 
@@ -141,22 +154,46 @@ public class ProjectService {
         member.setProject(project);
         member.setUser(invitee);
         member.setRole(ProjectRole.MEMBER);
-        return MemberDto.from(projectMemberRepository.save(member));
+        MemberDto dto = MemberDto.from(projectMemberRepository.save(member));
+        realtime.publish(projectId);
+        return dto;
     }
 
     @Transactional
     public void removeMember(UUID projectId, UUID userId, UUID targetUserId) {
-        ProjectMember caller = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+        // Caller must be a member. Any member can remove any other member, and
+        // anyone (including the project owner) can leave — there is no owner-only
+        // restriction. This mirrors Todoist: collaborators can remove each other.
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
-        if (caller.getRole() != ProjectRole.OWNER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can remove members");
-        }
         ProjectMember target = projectMemberRepository.findByProjectIdAndUserId(projectId, targetUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found"));
-        if (target.getRole() == ProjectRole.OWNER) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The owner cannot be removed");
-        }
+
+        boolean selfLeave = userId.equals(targetUserId);
+        String removedName = displayName(target.getUser());
+        String removedEmail = target.getUser().getEmail();
+        String projectName = target.getProject().getName();
         projectMemberRepository.delete(target);
+
+        if (selfLeave) {
+            // Voluntary "Leave": no email; notify the members who remain that this
+            // person left ("{leaver} left {project}").
+            for (ProjectMember remaining : projectMemberRepository.findByProjectId(projectId)) {
+                notificationService.create(remaining.getUser().getId(), NotificationType.LEFT_PROJECT,
+                        removedName, projectName, null, projectId, null, null);
+            }
+        } else {
+            // "Remove from project": email + notify the person who lost access.
+            emailService.sendRemoval(removedEmail, removedName, projectName);
+            String removerName = displayName(userRepository.getReferenceById(userId));
+            notificationService.create(targetUserId, NotificationType.REMOVED_FROM_PROJECT,
+                    removerName, projectName, null, projectId, null, null);
+        }
+        realtime.publish(projectId);
+    }
+
+    private static String displayName(User u) {
+        return (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail();
     }
 
     private Project loadMemberProject(UUID projectId, UUID userId) {

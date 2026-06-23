@@ -7,6 +7,8 @@ import ViewPlaceholder from "./views/ViewPlaceholder";
 import InboxView from "./views/InboxView";
 import ProjectView from "./views/ProjectView";
 import ProjectsView from "./views/ProjectsView";
+import NotificationsView from "./views/NotificationsView";
+import InviteAccept from "./pages/InviteAccept";
 
 function App() {
   return (
@@ -15,6 +17,9 @@ function App() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+
+        {/* Accept an invite (auth required; redirects back here after login) */}
+        <Route path="/invite/:token" element={<RequireAuth><InviteAccept /></RequireAuth>} />
 
         {/* Protected app shell */}
         <Route
@@ -31,6 +36,7 @@ function App() {
           <Route path="filters" element={<ViewPlaceholder title="Filters & Labels" />} />
           <Route path="reporting" element={<ViewPlaceholder title="Reporting" />} />
           <Route path="projects" element={<ProjectsView />} />
+          <Route path="notifications" element={<NotificationsView />} />
           <Route path="project/:projectId" element={<ProjectView />} />
           <Route path="*" element={<Navigate to="/inbox" replace />} />
         </Route>

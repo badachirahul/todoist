@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useNotificationStream } from "../api/realtime";
 
 const BREADCRUMBS = {
   "/inbox": "Inbox",
@@ -9,12 +10,14 @@ const BREADCRUMBS = {
   "/upcoming": "Upcoming",
   "/filters": "Filters & Labels",
   "/reporting": "Reporting",
+  "/notifications": "Notifications",
 };
 
 export default function AppLayout() {
   const { pathname } = useLocation();
   const breadcrumb = BREADCRUMBS[pathname] || "";
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  useNotificationStream(); // live badge + notifications page
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
@@ -29,11 +32,14 @@ export default function AppLayout() {
         <Sidebar onCollapse={() => setSidebarOpen(false)} />
       </div>
       <main className="flex flex-1 flex-col overflow-hidden">
-        <Topbar
-          breadcrumb={breadcrumb}
-          sidebarOpen={sidebarOpen}
-          onOpenSidebar={() => setSidebarOpen(true)}
-        />
+        {/* The Notifications page renders its own bare layout (no Display/comment/⋯ header). */}
+        {pathname !== "/notifications" && (
+          <Topbar
+            breadcrumb={breadcrumb}
+            sidebarOpen={sidebarOpen}
+            onOpenSidebar={() => setSidebarOpen(true)}
+          />
+        )}
         <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>

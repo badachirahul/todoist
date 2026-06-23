@@ -1,4 +1,4 @@
-import { NavLink, useMatch } from "react-router-dom";
+import { NavLink, useMatch, useNavigate } from "react-router-dom";
 import {
   Search,
   Inbox,
@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 import { useMe } from "../auth/useMe";
 import { useProjects } from "../api/projects";
+import { useUnreadCount } from "../api/notifications";
 import AddTaskModal from "../tasks/AddTaskModal";
 import ProjectRow from "./ProjectRow";
 import ProjectModal from "../projects/ProjectModal";
@@ -58,6 +59,8 @@ function NavRow({ to, label, icon: Icon, count }) {
 export default function Sidebar({ onCollapse }) {
   const { data: user } = useMe();
   const { data: projects = [] } = useProjects();
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const navigate = useNavigate();
   const inboxCount = projects.find((p) => p.inbox)?.taskCount ?? 0;
   const favorites = projects.filter((p) => p.favorite && !p.inbox);
   const initial = (user?.name?.[0] || "?").toUpperCase();
@@ -87,7 +90,16 @@ export default function Sidebar({ onCollapse }) {
           <ChevronDown size={16} className="text-gray-500" />
         </button>
         <div className="ml-auto flex items-center gap-1 text-gray-500">
-          <button className="rounded p-1.5 hover:bg-gray-200/60"><Bell size={18} /></button>
+          <button
+            onClick={() => navigate("/notifications")}
+            className="relative rounded p-1.5 hover:bg-gray-200/60"
+            aria-label="Notifications"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 block h-2 w-2 rounded-full bg-[#f60] ring-2 ring-[#fcfaf8]" />
+            )}
+          </button>
           <button onClick={onCollapse} className="rounded p-1.5 hover:bg-gray-200/60" aria-label="Collapse sidebar">
             <PanelLeft size={18} />
           </button>

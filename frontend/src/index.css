@@ -20,3 +20,18 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;                  /* Chrome/Safari */
 }
+
+/* Gentle fade used when the rotating auth artwork swaps. */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* A read notification's divider hides when the row directly BELOW it is hovered
+   (its own group-hover handles the row above). Together a hovered row drops both
+   its surrounding dividers and merges with its neighbours, like Todoist. */
+.ntf-item:has(+ .ntf-item:hover) .ntf-divider {
+  /* Transparent (not display:none) so the 1px stays in layout — hiding it must
+     not shift the rows below. */
+  background-color: transparent;
+}
