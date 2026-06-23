@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Hash, Plus, Check, Paperclip, Lock, ChevronUp, ChevronDown, ChevronRight, MoreHorizontal, CalendarDays, Sparkles, GitBranch, Inbox, Users, Mic, Smile, Type } from "lucide-react";
+import { X, Hash, Plus, Check, Paperclip, Lock, ChevronUp, ChevronDown, ChevronRight, MoreHorizontal, CalendarDays, Sparkles, GitBranch, Inbox, Users, Mic, Smile, Type, Pencil, Copy, Link2, Trash2, SmilePlus, AlignLeft } from "lucide-react";
 import { useProjects } from "../api/projects";
 import { useMe } from "../auth/useMe";
 import { useUploadCommentAttachment, useDeleteAttachment } from "../api/attachments";
-import { AttachmentBar, CommentAttachmentCard } from "../components/Attachment";
+import { CommentAttachmentCard } from "../components/Attachment";
+import Popover from "../components/Popover";
 import { useTasks } from "../api/tasks";
 import {
   useTask,
@@ -12,8 +13,9 @@ import {
   useCreateSubtask,
   useComments,
   useCreateComment,
+  useUpdateComment,
+  useDeleteComment,
 } from "../api/taskDetail";
-import Popover from "../components/Popover";
 import DatePicker from "./DatePicker";
 import PriorityDropdown, { PRIORITY_COLOR } from "./PriorityDropdown";
 import LabelPicker, { LabelChips } from "./LabelPicker";
@@ -82,129 +84,231 @@ function Subtasks({ parentId }) {
   );
 }
 
-function CommentItem({ c }) {
+// A comment's ⋯ actions menu, hover-revealed. Edit/Delete only for the author;
+// Copy text / Copy link are available to everyone.
+function CommentMenu({ isOwn, onEdit, onCopyText, onCopyLink, onDelete }) {
+  const Item = ({ icon: Icon, label, onClick, danger }) => (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-gray-100 ${danger ? "text-[#dc4c3e]" : "text-gray-700"}`}
+    >
+      <Icon size={15} /> {label}
+    </button>
+  );
   return (
-    <div className="mb-4 flex gap-3">
+    <Popover
+      align="right"
+      className="w-56 p-1 text-sm"
+      trigger={<button className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Comment actions"><MoreHorizontal size={16} /></button>}
+    >
+      {(close) => (
+        <div>
+          {isOwn && <Item icon={Pencil} label="Edit" onClick={() => { close(); onEdit(); }} />}
+          <Item icon={Copy} label="Copy text" onClick={() => { onCopyText(); close(); }} />
+          <Item icon={Link2} label="Copy link to comment" onClick={() => { onCopyLink(); close(); }} />
+          {isOwn && (
+            <>
+              <div className="my-1 border-t border-gray-100" />
+              <Item icon={Trash2} label="Delete" danger onClick={() => { close(); onDelete(); }} />
+            </>
+          )}
+        </div>
+      )}
+    </Popover>
+  );
+}
+
+function CommentItem({ c, projectId, isInbox, taskId, isOwn, onEdit, onDelete }) {
+  const copyText = () => navigator.clipboard?.writeText(c.content || "");
+  const copyLink = () => {
+    const base = isInbox ? "/inbox" : `/project/${projectId}`;
+    navigator.clipboard?.writeText(`${window.location.origin}${base}?task=${taskId}#comment-${c.id}`);
+  };
+  return (
+    <div className="group mb-4 flex gap-3">
       <Avatar name={c.authorName} avatarUrl={c.authorAvatarUrl} size={28} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="text-[13px]">
           <span className="font-semibold text-gray-800">{c.authorName}</span>
           <span className="ml-2 text-gray-400">{fmtCommentDate(c.createdAt)}</span>
         </div>
-        <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-800">{c.content}</p>
+        {c.content && <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-800">{c.content}</p>}
         {c.attachment && <CommentAttachmentCard attachment={c.attachment} />}
+      </div>
+      <div className="flex items-start gap-1 opacity-0 transition group-hover:opacity-100">
+        <button className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="React"><SmilePlus size={16} /></button>
+        <CommentMenu isOwn={isOwn} onEdit={onEdit} onCopyText={copyText} onCopyLink={copyLink} onDelete={onDelete} />
       </div>
     </div>
   );
 }
 
 /**
- * Comments. Project (group) tasks get a collapsible "Comments N" header and a
- * Notify/Nobody chip in the expanded editor; Inbox/personal tasks keep the
- * simpler editor (no Notify chip, no collapse). The editor expands on click.
+ * Shared comment composer — used for a NEW comment and for editing one. Project
+ * tasks show the Notify/Nobody chip on a new comment. Handles the single
+ * attachment: an existing one (edit) can be removed, or a new file picked
+ * (changes stay local until submit). onSubmit({ text, file, removeExisting }).
  */
-function Comments({ taskId, isProject }) {
+function CommentEditor({ isProject, isNew, initialText = "", initialAttachment = null, submitLabel, onSubmit, onCancel }) {
+  const [text, setText] = useState(initialText);
+  const [file, setFile] = useState(null);                          // newly picked file
+  const [keepExisting, setKeepExisting] = useState(!!initialAttachment);
+  const fileRef = useRef(null);
+
+  const existing = keepExisting && initialAttachment && !file ? initialAttachment : null;
+  const hasAttachment = !!existing || !!file;
+
+  function pickFile() { if (!hasAttachment) fileRef.current?.click(); }
+  function onFileChosen(e) { const f = e.target.files?.[0]; if (f) { setFile(f); setKeepExisting(false); } e.target.value = ""; }
+  function removeAttachment() { if (file) setFile(null); else setKeepExisting(false); }
+
+  function submit() {
+    if (!text.trim()) return;
+    onSubmit({ text: text.trim(), file, removeExisting: !!initialAttachment && !keepExisting });
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-300 p-3 shadow-sm">
+      {isProject && isNew && (
+        <div className="mb-2 flex items-center gap-2 text-[13px]">
+          <span className="rounded bg-gray-100 px-2 py-0.5 font-semibold text-gray-700">Notify</span>
+          <span className="text-gray-400">Nobody</span>
+        </div>
+      )}
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Comment"
+        rows={3}
+        className="w-full resize-none text-sm outline-none placeholder:text-gray-400"
+      />
+      {/* Attachment preview while composing/editing — trash on the left (Todoist) */}
+      {hasAttachment && (
+        <div className="mt-2 flex items-center gap-2 rounded-md" style={{ padding: "6px 8px", background: "rgba(0,0,0,.04)" }}>
+          <button type="button" onClick={removeAttachment} className="text-[#dc4c3e]" aria-label="Remove attachment"><Trash2 size={16} /></button>
+          <span className="min-w-0 flex-1 truncate text-sm text-gray-700">{file ? file.name : existing.filename}</span>
+        </div>
+      )}
+      <input ref={fileRef} type="file" className="hidden" onChange={onFileChosen} />
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-gray-400">
+          <button type="button" onClick={pickFile} className="hover:text-gray-600" aria-label="Attach file"><Paperclip size={18} /></button>
+          <Mic size={18} />
+          <Smile size={18} />
+          <Type size={18} />
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={onCancel} className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200">Cancel</button>
+          <button onClick={submit} disabled={!text.trim()} className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">{submitLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Comments. Project (group) tasks get a collapsible "Comments N" header + the
+ * Notify chip on new comments; Inbox/personal tasks keep the simpler editor.
+ * Each comment has a hover ⋯ menu (Edit / Copy / Delete) and edits in place.
+ */
+function Comments({ taskId, projectId, isProject, isInbox }) {
   const { data: comments = [] } = useComments(taskId);
   const { data: me } = useMe();
   const createComment = useCreateComment(taskId);
+  const updateComment = useUpdateComment(taskId);
+  const deleteComment = useDeleteComment(taskId);
   const uploadCommentAtt = useUploadCommentAttachment();
+  const deleteAttachment = useDeleteAttachment();
   const [collapsed, setCollapsed] = useState(false); // comments list (project only)
-  const [expanded, setExpanded] = useState(false);    // editor expanded
-  const [text, setText] = useState("");
-  const [file, setFile] = useState(null);             // attachment for the new comment
-  const fileRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);   // new-comment editor open
+  const [editingId, setEditingId] = useState(null);
 
   const hasComments = comments.length > 0;
 
-  function openEditor() { setExpanded(true); }
-  function onFileChosen(e) {
-    const f = e.target.files?.[0];
-    if (f) { setFile(f); setExpanded(true); }
-    e.target.value = "";
-  }
-
-  function submit() {
-    const t = text.trim();
-    if (!t) return;
-    const picked = file;
-    createComment.mutate(t, {
-      onSuccess: (comment) => {
-        if (picked && comment?.id) uploadCommentAtt.mutate({ commentId: comment.id, file: picked });
-      },
+  function submitNew({ text, file }) {
+    createComment.mutate(text, {
+      onSuccess: (comment) => { if (file && comment?.id) uploadCommentAtt.mutate({ commentId: comment.id, file }); },
     });
-    setText("");
-    setFile(null);
     setExpanded(false);
   }
-  function cancel() { setText(""); setFile(null); setExpanded(false); }
+
+  function submitEdit(c, { text, file, removeExisting }) {
+    updateComment.mutate({ id: c.id, content: text }, {
+      onSuccess: async () => {
+        if (removeExisting && c.attachment) await deleteAttachment.mutateAsync(c.attachment.id);
+        if (file) await uploadCommentAtt.mutateAsync({ commentId: c.id, file });
+        setEditingId(null);
+      },
+    });
+  }
+
+  function remove(c) {
+    if (window.confirm("Delete this comment?")) deleteComment.mutate(c.id);
+  }
 
   return (
-    // pl-2 leaves a little room before the avatar (border-t still spans full width).
-    <div className="mt-6 border-t border-gray-100 pt-4 pl-2">
-      {/* Collapsible header — project tasks with comments */}
+    <div className="mt-6 border-t border-gray-100 pt-4">
+      {/* Collapsible header — project tasks with comments (stays at the far left) */}
       {isProject && hasComments && (
         <button onClick={() => setCollapsed((c) => !c)} className="mb-3 flex items-center gap-2 text-sm">
-          {collapsed ? <ChevronRight size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+          <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
           <span className="font-bold text-gray-800">Comments</span>
           <span className="text-gray-500">{comments.length}</span>
         </button>
       )}
 
-      {/* Comments list (hidden only when a project's section is collapsed) */}
-      {(!isProject || !collapsed) && comments.map((c) => <CommentItem key={c.id} c={c} />)}
-
-      {/* Hidden file input shared by the pill + the editor paperclip */}
-      <input ref={fileRef} type="file" className="hidden" onChange={onFileChosen} />
-
-      {/* Editor */}
-      {expanded ? (
-        <div className="rounded-xl border border-gray-300 p-3 shadow-sm">
-          {isProject && (
-            <div className="mb-2 flex items-center gap-2 text-[13px]">
-              <span className="rounded bg-gray-100 px-2 py-0.5 font-semibold text-gray-700">Notify</span>
-              <span className="text-gray-400">Nobody</span>
+      {/* Comment list + editor are indented to line up with the task title /
+          "Add sub-task" (the header chevron stays at the far left).
+          ↓↓ change pl-[30px] to adjust the space before the comment avatars ↓↓ */}
+      <div className="pl-[30px]">
+      <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${collapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]"}`}>
+        <div className="min-h-0 overflow-hidden">
+        {comments.map((c) =>
+          editingId === c.id ? (
+            <div key={c.id} className="mb-4">
+              <CommentEditor
+                isProject={isProject}
+                isNew={false}
+                initialText={c.content}
+                initialAttachment={c.attachment}
+                submitLabel="Update"
+                onCancel={() => setEditingId(null)}
+                onSubmit={(payload) => submitEdit(c, payload)}
+              />
             </div>
-          )}
-          <textarea
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Comment"
-            rows={3}
-            className="w-full resize-none text-sm outline-none placeholder:text-gray-400"
-          />
-          {file && (
-            <div className="mt-2">
-              <AttachmentBar file={file} onRemove={() => setFile(null)} />
-            </div>
-          )}
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-3 text-gray-400">
-              <button type="button" onClick={() => fileRef.current?.click()} className="hover:text-gray-600" aria-label="Attach file"><Paperclip size={18} /></button>
-              <Mic size={18} />
-              <Smile size={18} />
-              <Type size={18} />
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={cancel} className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200">Cancel</button>
-              <button onClick={submit} disabled={!text.trim()} className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Comment</button>
-            </div>
-          </div>
+          ) : (
+            <CommentItem
+              key={c.id}
+              c={c}
+              projectId={projectId}
+              isInbox={isInbox}
+              taskId={taskId}
+              isOwn={c.authorId === me?.id}
+              onEdit={() => setEditingId(c.id)}
+              onDelete={() => remove(c)}
+            />
+          )
+        )}
         </div>
+      </div>
+
+      {/* New-comment editor: collapsed pill -> expanded composer */}
+      {expanded ? (
+        <CommentEditor isProject={isProject} isNew submitLabel="Comment" onCancel={() => setExpanded(false)} onSubmit={submitNew} />
       ) : (
         <div className="flex items-center gap-3">
           <Avatar name={me?.name} avatarUrl={me?.avatarUrl} size={28} />
           <button
-            onClick={openEditor}
+            onClick={() => setExpanded(true)}
             className="flex flex-1 items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-left text-sm text-gray-400 transition hover:border-gray-400"
           >
             <span className="flex-1">Comment</span>
-            <span onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} className="rounded p-0.5 hover:text-gray-600" aria-label="Attach file">
-              <Paperclip size={18} />
-            </span>
+            <Paperclip size={18} />
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -258,7 +362,6 @@ export default function TaskDetailModal({ taskId, onClose }) {
   const { data: members = [] } = useMembers(task?.projectId);
   const shared = members.length > 1;
   const update = useUpdateTaskById();
-  const deleteAttachment = useDeleteAttachment();
 
   // Siblings for ^/v navigation: sub-tasks of the parent, else top-level tasks.
   const parentId = task?.parentTaskId ?? null;
@@ -278,9 +381,12 @@ export default function TaskDetailModal({ taskId, onClose }) {
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [focusDesc, setFocusDesc] = useState(false);
 
   useEffect(() => {
     if (task) { setTitle(task.content); setDesc(task.description || ""); }
+    setEditing(false);
   }, [task?.id, task?.content, task?.description]);
 
   const project = projects.find((p) => p.id === task?.projectId);
@@ -374,39 +480,85 @@ export default function TaskDetailModal({ taskId, onClose }) {
                   aria-label="Complete task"
                 />
                 <div className="flex-1">
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onBlur={saveTitle}
-                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                    className="w-full text-xl font-bold text-[#202020] outline-none"
-                  />
-                  <textarea
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                    onBlur={saveDesc}
-                    placeholder="Description"
-                    rows={2}
-                    className="mt-1 w-full resize-none text-sm text-gray-600 outline-none placeholder:text-gray-400"
-                  />
+                  {!editing ? (
+                    <>
+                      <h2
+                        onClick={() => { setFocusDesc(false); setEditing(true); }}
+                        className="cursor-text text-xl font-bold text-[#202020]"
+                      >
+                        {title}
+                      </h2>
+                      {desc ? (
+                        <p
+                          onClick={() => { setFocusDesc(true); setEditing(true); }}
+                          className="mt-1 cursor-text whitespace-pre-wrap text-sm text-gray-600"
+                        >
+                          {desc}
+                        </p>
+                      ) : (
+                        <button
+                          onClick={() => { setFocusDesc(true); setEditing(true); }}
+                          className="mt-1 flex cursor-text items-center gap-1.5 text-sm text-gray-400"
+                        >
+                          <AlignLeft size={15} /> Description
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="ml-[3px] rounded-lg border border-gray-300 px-[7px] pt-1 focus-within:border-gray-400">
+                        <input
+                          autoFocus={!focusDesc}
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); saveTitle(); saveDesc(); setEditing(false); }
+                            if (e.key === "Escape") { setTitle(task.content); setDesc(task.description || ""); setEditing(false); }
+                          }}
+                          placeholder="Task name"
+                          className="w-full text-xl font-bold text-[#202020] outline-none"
+                        />
+                        <div className="mt-0.5 flex gap-1.5">
+                          <AlignLeft size={15} className="mt-1 flex-none text-gray-400" />
+                          <textarea
+                            autoFocus={focusDesc}
+                            value={desc}
+                            onChange={(e) => setDesc(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Escape") { setTitle(task.content); setDesc(task.description || ""); setEditing(false); } }}
+                            placeholder="Description"
+                            className="min-h-[72px] w-full resize-none pb-1 text-sm text-gray-600 outline-none placeholder:text-gray-400"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex justify-end gap-2">
+                        <button
+                          onClick={() => { setTitle(task.content); setDesc(task.description || ""); setEditing(false); }}
+                          className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => { saveTitle(); saveDesc(); setEditing(false); }}
+                          className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#c53727]"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-
-              {/* Task attachment (one per task) */}
-              {task.attachment && (
-                <div className="mt-3 pl-[30px]">
-                  <AttachmentBar
-                    attachment={task.attachment}
-                    onRemove={() => deleteAttachment.mutate(task.attachment.id)}
-                  />
-                </div>
-              )}
 
               {/* Indented under the title (past the checkbox) like Todoist */}
               <div className="pl-[30px]">
                 <Subtasks parentId={task.id} />
               </div>
-              <Comments taskId={task.id} isProject={!!project && !project.inbox} />
+              <Comments
+                taskId={task.id}
+                projectId={task.projectId}
+                isProject={!!project && !project.inbox}
+                isInbox={!!project?.inbox}
+              />
             </div>
 
             {/* Right properties panel (228px, sidebar cream; rows are full-width) */}

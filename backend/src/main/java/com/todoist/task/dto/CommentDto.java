@@ -9,6 +9,7 @@ import java.util.UUID;
 public record CommentDto(
         UUID id,
         UUID taskId,
+        UUID authorId,
         String authorName,
         String authorAvatarUrl,
         String content,
@@ -23,6 +24,7 @@ public record CommentDto(
         return new CommentDto(
                 c.getId(),
                 c.getTask().getId(),
+                c.getUser().getId(),
                 c.getUser().getName(),
                 c.getUser().getAvatarUrl(),
                 c.getContent(),

@@ -2,11 +2,11 @@ package com.todoist.task;
 
 import com.todoist.task.dto.CommentDto;
 import com.todoist.task.dto.CommentRequest;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,8 +34,15 @@ public class CommentController {
     @ResponseStatus(HttpStatus.CREATED)
     public CommentDto create(@PathVariable UUID taskId,
                              @AuthenticationPrincipal UUID userId,
-                             @Valid @RequestBody CommentRequest req) {
+                             @RequestBody CommentRequest req) {
         return commentService.create(taskId, userId, req.content());
+    }
+
+    @PatchMapping("/api/comments/{commentId}")
+    public CommentDto update(@PathVariable UUID commentId,
+                             @AuthenticationPrincipal UUID userId,
+                             @RequestBody CommentRequest req) {
+        return commentService.update(commentId, userId, req.content());
     }
 
     @DeleteMapping("/api/comments/{commentId}")

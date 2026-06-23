@@ -4,27 +4,28 @@ import { api, API_BASE_URL } from "../lib/api";
 /** Absolute URL to open/preview a saved attachment in a new tab. */
 export const fileUrl = (att) => (att ? `${API_BASE_URL}${att.url}` : null);
 
-/** Upload helpers (multipart). axios sets the boundary automatically for FormData. */
-export async function uploadTaskAttachment(taskId, file) {
-  const fd = new FormData();
-  fd.append("file", file);
-  return (await api.post(`/api/tasks/${taskId}/attachment`, fd)).data;
-}
-
+/** Upload a file to a comment (multipart). axios sets the boundary for FormData. */
 export async function uploadCommentAttachment(commentId, file) {
   const fd = new FormData();
   fd.append("file", file);
   return (await api.post(`/api/comments/${commentId}/attachment`, fd)).data;
 }
 
-/** Attach a file to a task (one per task); refreshes the task + list. */
-export function useUploadTaskAttachment() {
+/**
+ * "Task attachment": Todoist stores attachments on comments, so attaching a file
+ * to a task creates a comment (no text) that carries the file.
+ */
+export function useAttachFileToTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ taskId, file }) => uploadTaskAttachment(taskId, file),
+    mutationFn: async ({ taskId, file }) => {
+      const comment = (await api.post(`/api/tasks/${taskId}/comments`, { content: "" })).data;
+      return uploadCommentAttachment(comment.id, file);
+    },
     onSuccess: (_d, { taskId }) => {
-      qc.invalidateQueries({ queryKey: ["task", taskId] });
-      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      qc.invalidateQueries({ queryKey: ["comments"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] }); // comment-count badge
     },
   });
 }

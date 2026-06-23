@@ -68,10 +68,11 @@ public class CommentService {
     public CommentDto create(UUID taskId, UUID userId, String content) {
         Task task = assertTaskMember(taskId, userId);
         User author = userRepository.getReferenceById(userId);
+        String body = content != null ? content : ""; // attachment-only comments have no text
         Comment comment = new Comment();
         comment.setTask(task);
         comment.setUser(author);
-        comment.setContent(content);
+        comment.setContent(body);
         // Flush so @CreationTimestamp is populated in the returned DTO.
         CommentDto dto = CommentDto.from(commentRepository.saveAndFlush(comment));
 
@@ -81,12 +82,26 @@ public class CommentService {
             UUID memberId = m.getUser().getId();
             if (!memberId.equals(userId)) {
                 notificationService.create(memberId, NotificationType.COMMENT_ADDED,
-                        author.getName(), task.getContent(), content, projectId, task.getId(), null);
+                        author.getName(), task.getContent(), body, projectId, task.getId(), null);
             }
         }
         // Push so other members with this task's modal open see the comment live.
         realtime.publish(projectId);
         return dto;
+    }
+
+    /** Edit a comment's text (author only). */
+    @Transactional
+    public CommentDto update(UUID commentId, UUID userId, String content) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!comment.getUser().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your comment");
+        }
+        comment.setContent(content != null ? content : "");
+        AttachmentDto att = attachmentRepository.findByCommentId(commentId).map(AttachmentDto::from).orElse(null);
+        realtime.publish(comment.getTask().getProject().getId());
+        return CommentDto.from(comment, att);
     }
 
     @Transactional

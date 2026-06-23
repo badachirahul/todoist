@@ -67,10 +67,13 @@ export default function Popover({ trigger, children, align = "left", className =
       setOpen(false);
     }
     function onKey(e) { if (e.key === "Escape") setOpen(false); }
-    document.addEventListener("mousedown", onDocClick);
+    // Capture phase so an ancestor that stops propagation (e.g. the task detail
+    // modal's content, which swallows mousedown to avoid backdrop-close) can't
+    // prevent the outside-click from closing the popover.
+    document.addEventListener("mousedown", onDocClick, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("mousedown", onDocClick, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

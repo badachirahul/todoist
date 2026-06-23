@@ -64,3 +64,25 @@ export function useCreateComment(taskId) {
     },
   });
 }
+
+/** Edit a comment's text. */
+export function useUpdateComment(taskId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, content }) =>
+      (await api.patch(`/api/comments/${id}`, { content })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", taskId] }),
+  });
+}
+
+/** Delete a comment. */
+export function useDeleteComment(taskId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => api.delete(`/api/comments/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      qc.invalidateQueries({ queryKey: ["tasks"] }); // comment-count badge
+    },
+  });
+}

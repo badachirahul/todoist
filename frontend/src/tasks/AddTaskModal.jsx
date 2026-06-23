@@ -3,7 +3,7 @@ import Modal from "../components/Modal";
 import TaskForm from "./TaskForm";
 import { useInbox } from "../api/projects";
 import { useCreateTask } from "../api/tasks";
-import { useUploadTaskAttachment } from "../api/attachments";
+import { useAttachFileToTask } from "../api/attachments";
 
 /**
  * Global "Add task" popup (sidebar button). Centered over any page. For now it
@@ -13,7 +13,7 @@ import { useUploadTaskAttachment } from "../api/attachments";
 export default function AddTaskModal({ open, onClose }) {
   const { inbox } = useInbox();
   const createTask = useCreateTask(inbox?.id);
-  const uploadAttachment = useUploadTaskAttachment();
+  const uploadAttachment = useAttachFileToTask();
 
   return (
     <Modal open={open} onClose={onClose}>

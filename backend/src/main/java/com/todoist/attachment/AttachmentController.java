@@ -27,14 +27,6 @@ public class AttachmentController {
         this.attachmentService = attachmentService;
     }
 
-    @PostMapping("/api/tasks/{taskId}/attachment")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AttachmentDto attachToTask(@PathVariable UUID taskId,
-                                      @AuthenticationPrincipal UUID userId,
-                                      @RequestParam("file") MultipartFile file) {
-        return attachmentService.attachToTask(taskId, userId, file);
-    }
-
     @PostMapping("/api/comments/{commentId}/attachment")
     @ResponseStatus(HttpStatus.CREATED)
     public AttachmentDto attachToComment(@PathVariable UUID commentId,

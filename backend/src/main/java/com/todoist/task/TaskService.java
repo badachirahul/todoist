@@ -5,8 +5,6 @@ import com.todoist.project.ProjectMemberRepository;
 import com.todoist.project.ProjectRepository;
 import com.todoist.project.Section;
 import com.todoist.project.SectionRepository;
-import com.todoist.attachment.AttachmentRepository;
-import com.todoist.attachment.dto.AttachmentDto;
 import com.todoist.label.Label;
 import com.todoist.label.LabelRepository;
 import com.todoist.notification.NotificationService;
@@ -40,7 +38,6 @@ public class TaskService {
     private final SectionRepository sectionRepository;
     private final LabelRepository labelRepository;
     private final CommentRepository commentRepository;
-    private final AttachmentRepository attachmentRepository;
     private final RealtimeService realtime;
     private final NotificationService notificationService;
 
@@ -51,7 +48,6 @@ public class TaskService {
                        SectionRepository sectionRepository,
                        LabelRepository labelRepository,
                        CommentRepository commentRepository,
-                       AttachmentRepository attachmentRepository,
                        RealtimeService realtime,
                        NotificationService notificationService) {
         this.taskRepository = taskRepository;
@@ -61,7 +57,6 @@ public class TaskService {
         this.sectionRepository = sectionRepository;
         this.labelRepository = labelRepository;
         this.commentRepository = commentRepository;
-        this.attachmentRepository = attachmentRepository;
         this.realtime = realtime;
         this.notificationService = notificationService;
     }
@@ -129,9 +124,7 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public TaskDto get(UUID taskId, UUID userId) {
-        Task task = loadOwnedTask(taskId, userId);
-        AttachmentDto att = attachmentRepository.findByTaskId(taskId).map(AttachmentDto::from).orElse(null);
-        return TaskDto.from(task, 0, 0, 0, att);
+        return TaskDto.from(loadOwnedTask(taskId, userId));
     }
 
     @Transactional(readOnly = true)

@@ -5,8 +5,6 @@ import com.todoist.project.ProjectMemberRepository;
 import com.todoist.realtime.RealtimeService;
 import com.todoist.task.Comment;
 import com.todoist.task.CommentRepository;
-import com.todoist.task.Task;
-import com.todoist.task.TaskRepository;
 import com.todoist.user.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -28,7 +26,6 @@ import java.util.UUID;
 public class AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
-    private final TaskRepository taskRepository;
     private final CommentRepository commentRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
@@ -36,14 +33,12 @@ public class AttachmentService {
     private final Path root;
 
     public AttachmentService(AttachmentRepository attachmentRepository,
-                             TaskRepository taskRepository,
                              CommentRepository commentRepository,
                              ProjectMemberRepository projectMemberRepository,
                              UserRepository userRepository,
                              RealtimeService realtime,
                              @Value("${app.upload-dir:uploads}") String uploadDir) {
         this.attachmentRepository = attachmentRepository;
-        this.taskRepository = taskRepository;
         this.commentRepository = commentRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
@@ -54,21 +49,6 @@ public class AttachmentService {
         } catch (IOException e) {
             throw new IllegalStateException("Could not create upload directory " + root, e);
         }
-    }
-
-    @Transactional
-    public AttachmentDto attachToTask(UUID taskId, UUID userId, MultipartFile file) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
-        assertMember(task.getProject().getId(), userId);
-        if (attachmentRepository.existsByTaskId(taskId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only one file can be attached per task.");
-        }
-        Attachment a = new Attachment();
-        a.setTask(task);
-        populateAndSave(a, file, userId);
-        realtime.publish(task.getProject().getId());
-        return AttachmentDto.from(a);
     }
 
     @Transactional

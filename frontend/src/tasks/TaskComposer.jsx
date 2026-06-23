@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import TaskForm from "./TaskForm";
 import { useCreateTask } from "../api/tasks";
-import { useUploadTaskAttachment } from "../api/attachments";
+import { useAttachFileToTask } from "../api/attachments";
 
 /**
  * Inline "+ Add task". Collapsed it's a muted button; expanded it shows the
@@ -12,7 +12,7 @@ import { useUploadTaskAttachment } from "../api/attachments";
 export default function TaskComposer({ projectId, sectionId }) {
   const [open, setOpen] = useState(false);
   const createTask = useCreateTask(projectId);
-  const uploadAttachment = useUploadTaskAttachment();
+  const uploadAttachment = useAttachFileToTask();
 
   if (!open) {
     return (
