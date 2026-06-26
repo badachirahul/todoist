@@ -149,9 +149,18 @@ public class TaskService {
         task.setDueDate(req.dueDate());
         task.setPosition(taskRepository.findByParentTaskIdOrderByPosition(parentTaskId).size());
 
-        TaskDto dto = TaskDto.from(taskRepository.save(task));
+        // A sub-task stays in the parent's (shared) project, so it can carry an
+        // assignee just like a top-level task.
+        if (req.assigneeId() != null) applyAssignee(task, req.assigneeId());
+
+        Task saved = taskRepository.save(task);
+        if (req.assigneeId() != null && !req.assigneeId().equals(userId)) {
+            notificationService.create(req.assigneeId(), NotificationType.TASK_ASSIGNED,
+                    actorName(userId), saved.getContent(), null,
+                    parent.getProject().getId(), saved.getId(), null);
+        }
         realtime.publish(parent.getProject().getId());
-        return dto;
+        return TaskDto.from(saved);
     }
 
     @Transactional

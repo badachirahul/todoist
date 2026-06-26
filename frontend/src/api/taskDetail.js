@@ -35,8 +35,10 @@ export function useSubtasks(parentTaskId) {
 export function useCreateSubtask(parentTaskId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (content) =>
-      (await api.post(`/api/tasks/${parentTaskId}/subtasks`, { content })).data,
+    // `body` carries the full task fields (content, description, priority,
+    // dueDate, assigneeId) — the sub-task composer reuses the shared TaskForm.
+    mutationFn: async (body) =>
+      (await api.post(`/api/tasks/${parentTaskId}/subtasks`, body)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["subtasks", parentTaskId] });
       qc.invalidateQueries({ queryKey: ["tasks"] });    // show in list + update 0/N

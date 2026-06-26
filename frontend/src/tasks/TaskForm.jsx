@@ -1,18 +1,27 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UserPlus, Paperclip, X } from "lucide-react";
 import DatePicker from "./DatePicker";
 import PriorityDropdown from "./PriorityDropdown";
 import AssigneePicker from "./AssigneePicker";
+import ProjectPicker from "./ProjectPicker";
 import Avatar from "../components/Avatar";
 import Toast from "../components/Toast";
 import { AttachmentBar } from "../components/Attachment";
 import { useMembers } from "../api/members";
+import { useProjects } from "../api/projects";
 
 /**
- * Presentational add/edit form (name + Date + Priority [+ Assignee]). Decoupled
- * from any mutation: the parent passes onSubmit({content, priority, dueDate,
- * assigneeId}). Shared by the inline composer, the global modal, and inline edit.
- * The assignee control only appears when `projectId` is a shared project (>1 member).
+ * Presentational add/edit form (name + Description + Date + Priority [+ Assignee]
+ * + project picker). Decoupled from any mutation: the parent passes
+ * onSubmit({content, description, priority, dueDate, assigneeId, projectId, file}).
+ * Shared by the inline composer, the global modal, the sub-task composer, and
+ * inline edit.
+ *
+ * - `showDescription` renders the Description line.
+ * - `showProjectPicker` renders the bottom-left project selector; the selected
+ *   project drives BOTH the assignee control (shown only when that project is
+ *   shared) and an inline `#project` chip after the title (shown once you pick a
+ *   project different from the default `projectId`).
  */
 export default function TaskForm({
   initial,
@@ -23,18 +32,40 @@ export default function TaskForm({
   autoFocus = true,
   pending = false,
   projectId,
+  showDescription = false,
+  showProjectPicker = false,
 }) {
   const [content, setContent] = useState(initial?.content ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [priority, setPriority] = useState(initial?.priority ?? 4);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? null);
   const [assigneeId, setAssigneeId] = useState(initial?.assigneeId ?? null);
+  const [projectIdSel, setProjectIdSel] = useState(projectId ?? null);
   const [file, setFile] = useState(null);   // local attachment (uploaded after the task is created)
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
 
-  const { data: members = [] } = useMembers(projectId);
+  // Assignee + chip follow the SELECTED project (not the default), so switching
+  // projects in the picker shows/hides Assignee and updates the chip live.
+  const { data: members = [] } = useMembers(projectIdSel);
   const shared = members.length > 1;
   const assignee = members.find((m) => m.userId === assigneeId);
+  const { data: projects = [] } = useProjects();
+
+  // The inline chip shows once you redirect the task to a project other than the
+  // composer's default.
+  const showChip = showProjectPicker && projectIdSel && projectIdSel !== projectId;
+  const chipName = showChip ? projects.find((p) => p.id === projectIdSel)?.name : null;
+
+  // When the chip appears (project picked before typing) the title input is
+  // tiny, so focus it explicitly — otherwise there's no visible caret.
+  const titleRef = useRef(null);
+  useEffect(() => { if (showChip) titleRef.current?.focus(); }, [showChip]);
+
+  // Task-name font — ONE source of truth. Used by all three title elements (the
+  // plain input, and the chip-case mirror span + overlay input, which must match
+  // so the #project chip lands right after the text). Change size/weight here.
+  const TITLE_FONT = "text-[15px] font-semibold";
 
   // Only one file per task — clicking Attachment again shows the toast.
   function pickFile() {
@@ -51,25 +82,66 @@ export default function TaskForm({
     e.preventDefault();
     const trimmed = content.trim();
     if (!trimmed) return;
-    onSubmit({ content: trimmed, priority, dueDate, assigneeId, file });
+    const payload = { content: trimmed, priority, dueDate, assigneeId, file };
+    if (showDescription) payload.description = description.trim();
+    if (showProjectPicker) payload.projectId = projectIdSel;
+    onSubmit(payload);
     if (resetAfterSubmit) {
       setContent("");
+      setDescription("");
       setPriority(4);
       setDueDate(null);
       setAssigneeId(null);
+      setProjectIdSel(projectId ?? null);
       setFile(null);
     }
   }
 
   return (
     <form onSubmit={submit}>
-      <input
-        autoFocus={autoFocus}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Task name"
-        className="w-full text-sm outline-none placeholder:text-gray-400"
-      />
+      {/* Title — with an inline `#project` chip after the text when redirected.
+          In the chip case the input overlays a zero-width mirror span so its
+          width tracks the typed text and the chip sits right after it. */}
+      {showChip ? (
+        <div className="flex flex-wrap items-center gap-x-1.5">
+          <span className="relative inline-block min-w-[8px] max-w-full">
+            <span className={`invisible whitespace-pre ${TITLE_FONT}`}>{content || "​"}</span>
+            <input
+              ref={titleRef}
+              autoFocus={autoFocus}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className={`absolute inset-0 w-full outline-none ${TITLE_FONT}`}
+            />
+          </span>
+          {/* Click the chip to remove it → back to the default project */}
+          <button
+            type="button"
+            onClick={() => setProjectIdSel(projectId ?? null)}
+            title="Remove — use the default project"
+            className="rounded bg-[#fde8e1] px-1 py-0.5 text-sm font-semibold text-[#c4502f] hover:bg-[#fbd9cd]"
+          >
+            #{chipName}
+          </button>
+        </div>
+      ) : (
+        <input
+          autoFocus={autoFocus}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Task name"
+          className={`w-full outline-none placeholder:text-gray-400 ${TITLE_FONT}`}
+        />
+      )}
+
+      {showDescription && (
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description"
+          className="mt-1 w-full text-[13px] outline-none placeholder:text-gray-400"
+        />
+      )}
 
       {/* Gray attachment container — above the metadata chips */}
       {file && (
@@ -104,7 +176,7 @@ export default function TaskForm({
 
         {shared && (
           <AssigneePicker
-            projectId={projectId}
+            projectId={projectIdSel}
             value={assigneeId}
             onChange={setAssigneeId}
             trigger={
@@ -120,21 +192,31 @@ export default function TaskForm({
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={!content.trim() || pending}
-          className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {submitLabel}
-        </button>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+        <div className="min-w-0">
+          {showProjectPicker && (
+            <ProjectPicker
+              value={projectIdSel}
+              onChange={(id) => { setProjectIdSel(id); setAssigneeId(null); }}
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!content.trim() || pending}
+            className="rounded-md bg-[#dc4c3e] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {submitLabel}
+          </button>
+        </div>
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

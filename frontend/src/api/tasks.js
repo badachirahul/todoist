@@ -25,6 +25,24 @@ export function useCreateTask(projectId) {
 }
 
 /**
+ * Create a task into ANY project — the target `projectId` is passed at call time
+ * (in the mutation payload), not bound to the hook. Used by the composers whose
+ * project picker lets you redirect the task to a different project than the one
+ * you're viewing.
+ */
+export function useCreateTaskInProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, ...body }) =>
+      (await api.post(`/api/projects/${projectId}/tasks`, body)).data,
+    onSuccess: (_data, { projectId }) => {
+      qc.invalidateQueries({ queryKey: tasksKey(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+/**
  * Update a task. Optimistic: completing a task removes it from the list
  * immediately; other field changes are merged in place. Rolls back on error.
  */

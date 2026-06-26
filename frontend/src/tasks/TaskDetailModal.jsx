@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, Hash, Plus, Check, Paperclip, Lock, ChevronUp, ChevronDown, ChevronRight, MoreHorizontal, CalendarDays, Sparkles, GitBranch, Inbox, Users, Mic, Smile, Type, Pencil, Copy, Link2, Trash2, SmilePlus, AlignLeft } from "lucide-react";
 import { useProjects } from "../api/projects";
 import { useMe } from "../auth/useMe";
-import { useUploadCommentAttachment, useDeleteAttachment } from "../api/attachments";
+import { useUploadCommentAttachment, useDeleteAttachment, useAttachFileToTask } from "../api/attachments";
 import { CommentAttachmentCard } from "../components/Attachment";
 import Popover from "../components/Popover";
-import { useTasks } from "../api/tasks";
+import Toast from "../components/Toast";
+import TaskForm from "./TaskForm";
+import { useTasks, useCreateTaskInProject } from "../api/tasks";
 import {
   useTask,
   useUpdateTaskById,
@@ -36,19 +39,35 @@ function fmtCommentDate(iso) {
 }
 
 // --- Sub-tasks section ---
-function Subtasks({ parentId }) {
+// `parentProjectId` = the parent task's project. The composer is the shared
+// TaskForm: if you keep that project, it creates a real sub-task; pick a
+// DIFFERENT project and it becomes a top-level task there (parent link dropped),
+// with a "Task added to X" toast — matching Todoist.
+function Subtasks({ parentId, parentProjectId }) {
+  const navigate = useNavigate();
   const { data: subtasks = [] } = useSubtasks(parentId);
+  const { data: projects = [] } = useProjects();
   const update = useUpdateTaskById();
   const createSubtask = useCreateSubtask(parentId);
+  const createTask = useCreateTaskInProject();
+  const uploadAttachment = useAttachFileToTask();
   const [adding, setAdding] = useState(false);
-  const [text, setText] = useState("");
+  const [toast, setToast] = useState(null);
 
-  function add(e) {
-    e.preventDefault();
-    const t = text.trim();
-    if (!t) return;
-    createSubtask.mutate(t);
-    setText("");
+  function handleSubmit({ file, projectId, ...values }) {
+    const target = projectId || parentProjectId;
+    const onSuccess = (task) => { if (file && task?.id) uploadAttachment.mutate({ taskId: task.id, file }); };
+    if (target === parentProjectId) {
+      createSubtask.mutate(values, { onSuccess });
+    } else {
+      createTask.mutate({ projectId: target, ...values }, { onSuccess });
+      const project = projects.find((p) => p.id === target);
+      setToast({
+        message: `Task added to ${project?.name ?? "project"}`,
+        to: project?.inbox ? "/inbox" : `/project/${target}`,
+      });
+    }
+    setAdding(false);
   }
 
   return (
@@ -67,18 +86,29 @@ function Subtasks({ parentId }) {
       ))}
 
       {adding ? (
-        <form onSubmit={add} className="mt-2">
-          <input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="Sub-task name"
-            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm outline-none" />
-          <div className="mt-2 flex gap-2">
-            <button type="submit" disabled={!text.trim()} className="rounded-md bg-[#dc4c3e] px-3 py-1 text-sm font-medium text-white disabled:opacity-50">Add</button>
-            <button type="button" onClick={() => { setAdding(false); setText(""); }} className="rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-600">Cancel</button>
-          </div>
-        </form>
+        <div className="mt-3 rounded-lg border border-gray-300 p-3 shadow-sm">
+          <TaskForm
+            projectId={parentProjectId}
+            showDescription
+            showProjectPicker
+            onSubmit={handleSubmit}
+            onCancel={() => setAdding(false)}
+            pending={createSubtask.isPending || createTask.isPending}
+          />
+        </div>
       ) : (
         <button onClick={() => setAdding(true)} className="mt-2 flex items-center gap-2 text-sm text-gray-500 hover:text-[#dc4c3e]">
           <Plus size={16} /> Add sub-task
         </button>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          align="left"
+          action={{ label: "Open", onClick: () => navigate(toast.to) }}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
@@ -125,7 +155,9 @@ function CommentItem({ c, projectId, isInbox, taskId, isOwn, onEdit, onDelete })
     navigator.clipboard?.writeText(`${window.location.origin}${base}?task=${taskId}#comment-${c.id}`);
   };
   return (
-    <div className="group mb-4 flex gap-3">
+    // padding 12px + margin 4px -12px (matches Todoist's note_text.has_avatar):
+    // the negative side-margin lets the hover bg bleed out while content stays aligned.
+    <div className="group -mx-3 my-1 flex gap-3 rounded-lg p-3 hover:bg-gray-50">
       <Avatar name={c.authorName} avatarUrl={c.authorAvatarUrl} size={28} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="text-[13px]">
@@ -165,6 +197,8 @@ function CommentEditor({ isProject, isNew, initialText = "", initialAttachment =
   function submit() {
     if (!text.trim()) return;
     onSubmit({ text: text.trim(), file, removeExisting: !!initialAttachment && !keepExisting });
+    // For a new comment the composer stays open — clear it for the next one.
+    if (isNew) { setText(""); setFile(null); setKeepExisting(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   return (
@@ -215,23 +249,26 @@ function CommentEditor({ isProject, isNew, initialText = "", initialAttachment =
 function Comments({ taskId, projectId, isProject, isInbox }) {
   const { data: comments = [] } = useComments(taskId);
   const { data: me } = useMe();
-  const createComment = useCreateComment(taskId);
   const updateComment = useUpdateComment(taskId);
   const deleteComment = useDeleteComment(taskId);
   const uploadCommentAtt = useUploadCommentAttachment();
   const deleteAttachment = useDeleteAttachment();
   const [collapsed, setCollapsed] = useState(false); // comments list (project only)
-  const [expanded, setExpanded] = useState(false);   // new-comment editor open
   const [editingId, setEditingId] = useState(null);
 
   const hasComments = comments.length > 0;
 
-  function submitNew({ text, file }) {
-    createComment.mutate(text, {
-      onSuccess: (comment) => { if (file && comment?.id) uploadCommentAtt.mutate({ commentId: comment.id, file }); },
-    });
-    setExpanded(false);
-  }
+  // Scroll the newest comment into view when one is added (+1), so a freshly
+  // posted comment is visible. The +1 check avoids scrolling on the initial
+  // bulk load (0 -> N), which would otherwise hide the title on open.
+  const bottomRef = useRef(null);
+  const prevLen = useRef(comments.length);
+  useEffect(() => {
+    if (comments.length === prevLen.current + 1) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+    prevLen.current = comments.length;
+  }, [comments.length]);
 
   function submitEdit(c, { text, file, removeExisting }) {
     updateComment.mutate({ id: c.id, content: text }, {
@@ -249,8 +286,8 @@ function Comments({ taskId, projectId, isProject, isInbox }) {
 
   return (
     <div className="mt-6 border-t border-gray-100 pt-4">
-      {/* Collapsible header — project tasks with comments (stays at the far left) */}
-      {isProject && hasComments && (
+      {/* Collapsible header — shown whenever there are comments (incl. Inbox) */}
+      {hasComments && (
         <button onClick={() => setCollapsed((c) => !c)} className="mb-3 flex items-center gap-2 text-sm">
           <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
           <span className="font-bold text-gray-800">Comments</span>
@@ -290,10 +327,36 @@ function Comments({ taskId, projectId, isProject, isInbox }) {
             />
           )
         )}
+        <div ref={bottomRef} />
         </div>
       </div>
+      </div>
+    </div>
+  );
+}
 
-      {/* New-comment editor: collapsed pill -> expanded composer */}
+/**
+ * New-comment composer — pinned at the bottom of the task-detail left column
+ * (never scrolls, regardless of comment count). Collapsed it's a single-line
+ * "Comment" pill; clicking expands it into the full editor (image 2). The
+ * comment list lives in the scrollable area above, in <Comments />.
+ */
+function CommentComposer({ taskId, isProject }) {
+  const { data: me } = useMe();
+  const createComment = useCreateComment(taskId);
+  const uploadCommentAtt = useUploadCommentAttachment();
+  const [expanded, setExpanded] = useState(false);
+
+  function submitNew({ text, file }) {
+    createComment.mutate(text, {
+      onSuccess: (comment) => { if (file && comment?.id) uploadCommentAtt.mutate({ commentId: comment.id, file }); },
+    });
+    // Stay expanded after posting (the editor clears itself) so you can keep
+    // adding comments; only Cancel collapses back to the pill.
+  }
+
+  return (
+    <div className="pl-[30px]">
       {expanded ? (
         <CommentEditor isProject={isProject} isNew submitLabel="Comment" onCancel={() => setExpanded(false)} onSubmit={submitNew} />
       ) : (
@@ -308,7 +371,6 @@ function Comments({ taskId, projectId, isProject, isInbox }) {
           </button>
         </div>
       )}
-      </div>
     </div>
   );
 }
@@ -423,8 +485,15 @@ export default function TaskDetailModal({ taskId, onClose }) {
           <div className="p-8 text-sm text-gray-400">Loading…</div>
         ) : (
           <div className="flex flex-1 overflow-hidden">
-            {/* Left main column (604px content at 864 width) */}
-            <div className="flex-1 overflow-y-auto p-4">
+            {/* Left main column (604px content at 864 width) — title/description/
+                sub-tasks/comments share ONE scroll region; the comment composer is
+                a fixed footer below it, so the scrollbar ends above the composer
+                (not at the modal bottom), matching Todoist. Default flex (grow 0,
+                shrink 1) + min-h-0 lets the region sit at content height when short
+                (composer rises right under the comments) and shrink + scroll once
+                it overflows. */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="min-h-0 overflow-y-auto px-4 pt-4">
               {/* Parent breadcrumb + sub-tasks dropdown (shown when viewing a sub-task) */}
               {parentId && parentTask && (
                 <div className="mb-3 inline-flex items-center rounded-md border border-gray-200 text-sm">
@@ -551,7 +620,7 @@ export default function TaskDetailModal({ taskId, onClose }) {
 
               {/* Indented under the title (past the checkbox) like Todoist */}
               <div className="pl-[30px]">
-                <Subtasks parentId={task.id} />
+                <Subtasks parentId={task.id} parentProjectId={task.projectId} />
               </div>
               <Comments
                 taskId={task.id}
@@ -559,6 +628,13 @@ export default function TaskDetailModal({ taskId, onClose }) {
                 isProject={!!project && !project.inbox}
                 isInbox={!!project?.inbox}
               />
+              </div>
+
+              {/* Fixed comment composer — the scroll region above ends here, so the
+                  scrollbar stops above it (matches Todoist). */}
+              <div className="flex-none px-4 pb-4 pt-2">
+                <CommentComposer taskId={task.id} isProject={!!project && !project.inbox} />
+              </div>
             </div>
 
             {/* Right properties panel (228px, sidebar cream; rows are full-width) */}
