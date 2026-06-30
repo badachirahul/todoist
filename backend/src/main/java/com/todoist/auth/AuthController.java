@@ -1,12 +1,13 @@
 package com.todoist.auth;
 
-import com.todoist.auth.dto.LoginRequest;
-import com.todoist.auth.dto.RegisterRequest;
-import com.todoist.auth.dto.UserDto;
-import com.todoist.user.User;
-import com.todoist.user.UserService;
+import com.todoist.dto.LoginRequest;
+import com.todoist.dto.RegisterRequest;
+import com.todoist.dto.UserDto;
+import com.todoist.entity.User;
+import com.todoist.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")

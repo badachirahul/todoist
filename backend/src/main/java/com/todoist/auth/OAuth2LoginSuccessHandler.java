@@ -1,10 +1,11 @@
 package com.todoist.auth;
 
-import com.todoist.user.User;
-import com.todoist.user.UserService;
+import com.todoist.entity.User;
+import com.todoist.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -13,8 +14,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 
 /**
  * Runs after Google verifies the user. We read the Google profile, find/create
